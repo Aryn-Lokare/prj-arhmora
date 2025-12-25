@@ -1,0 +1,610 @@
+# backend/api/views.py
+
+from rest_framework import status, generics
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.exceptions import TokenError
+
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import User
+from django.db import transaction
+from django.conf import settings
+
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
+from .models import EmailVerificationToken, PasswordResetToken, Profile, SocialAccount
+from .serializers import (
+    UserSerializer,
+    RegisterSerializer,
+    LoginSerializer,
+    ChangePasswordSerializer,
+    UpdateUserSerializer,
+    VerifyEmailSerializer,
+    ResendVerificationSerializer,
+    ForgotPasswordSerializer,
+    ResetPasswordSerializer,
+    ValidateResetTokenSerializer,
+    GoogleAuthSerializer,
+    SocialAccountSerializer,
+)
+from .utils import send_verification_email, send_password_reset_email, send_password_changed_email
+
+
+# ============================================
+# AUTH VIEWS (existing)
+# ============================================
+
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = [AllowAny]
+    serializer_class = RegisterSerializer
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        verification_token = EmailVerificationToken.objects.create(user=user)
+        
+        try:
+            send_verification_email(user, verification_token.token)
+        except Exception as e:
+            print(f"Error sending verification email: {e}")
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            'success': True,
+            'message': 'Registration successful. Please check your email to verify your account.',
+            'data': {
+                'user': UserSerializer(user).data,
+                'tokens': {
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh),
+                }
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+    serializer_class = LoginSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data['email']
+        password = serializer.validated_data['password']
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Invalid email or password'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+        user = authenticate(username=user.username, password=password)
+
+        if user is None:
+            return Response({
+                'success': False,
+                'message': 'Invalid email or password'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+        if not user.is_active:
+            return Response({
+                'success': False,
+                'message': 'Account is disabled'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+        refresh = RefreshToken.for_user(user)
+        is_verified = user.profile.is_email_verified if hasattr(user, 'profile') else False
+
+        return Response({
+            'success': True,
+            'message': 'Login successful',
+            'data': {
+                'user': UserSerializer(user).data,
+                'tokens': {
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh),
+                },
+                'is_email_verified': is_verified
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            refresh_token = request.data.get('refresh')
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+
+            return Response({
+                'success': True,
+                'message': 'Logged out successfully'
+            }, status=status.HTTP_200_OK)
+
+        except TokenError:
+            return Response({
+                'success': False,
+                'message': 'Invalid token'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserView(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return UpdateUserSerializer
+        return UserSerializer
+
+    def get_object(self):
+        return self.request.user
+
+    def retrieve(self, request, *args, **kwargs):
+        serializer = self.get_serializer(request.user)
+        return Response({
+            'success': True,
+            'data': serializer.data
+        })
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        serializer = self.get_serializer(
+            request.user,
+            data=request.data,
+            partial=partial
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response({
+            'success': True,
+            'message': 'Profile updated successfully',
+            'data': UserSerializer(request.user).data
+        })
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+
+        if not user.check_password(serializer.validated_data['old_password']):
+            return Response({
+                'success': False,
+                'message': 'Current password is incorrect'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+
+        try:
+            send_password_changed_email(user)
+        except Exception as e:
+            print(f"Error sending password changed email: {e}")
+
+        return Response({
+            'success': True,
+            'message': 'Password changed successfully'
+        }, status=status.HTTP_200_OK)
+
+
+class CustomTokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        try:
+            response = super().post(request, *args, **kwargs)
+            return Response({
+                'success': True,
+                'data': {
+                    'tokens': response.data
+                }
+            })
+        except TokenError as e:
+            return Response({
+                'success': False,
+                'message': str(e)
+            }, status=status.HTTP_401_UNAUTHORIZED)
+
+
+# ============================================
+# EMAIL VERIFICATION VIEWS (existing)
+# ============================================
+
+class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = VerifyEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        token = serializer.validated_data['token']
+
+        try:
+            verification_token = EmailVerificationToken.objects.get(token=token)
+        except EmailVerificationToken.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Invalid verification token'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if verification_token.is_used:
+            return Response({
+                'success': False,
+                'message': 'This token has already been used'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if verification_token.is_expired():
+            return Response({
+                'success': False,
+                'message': 'This token has expired. Please request a new verification email.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        verification_token.is_used = True
+        verification_token.save()
+
+        user = verification_token.user
+        if hasattr(user, 'profile'):
+            user.profile.is_email_verified = True
+            user.profile.save()
+
+        return Response({
+            'success': True,
+            'message': 'Email verified successfully'
+        }, status=status.HTTP_200_OK)
+
+
+class ResendVerificationView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResendVerificationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data['email']
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({
+                'success': True,
+                'message': 'If an account with this email exists, a verification email has been sent.'
+            }, status=status.HTTP_200_OK)
+
+        if hasattr(user, 'profile') and user.profile.is_email_verified:
+            return Response({
+                'success': False,
+                'message': 'This email is already verified'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        EmailVerificationToken.objects.filter(user=user, is_used=False).update(is_used=True)
+        verification_token = EmailVerificationToken.objects.create(user=user)
+
+        try:
+            send_verification_email(user, verification_token.token)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': 'Failed to send verification email. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            'success': True,
+            'message': 'Verification email sent successfully'
+        }, status=status.HTTP_200_OK)
+
+
+# ============================================
+# PASSWORD RESET VIEWS (existing)
+# ============================================
+
+class ForgotPasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data['email']
+
+        try:
+            user = User.objects.get(email=email)
+            PasswordResetToken.objects.filter(user=user, is_used=False).update(is_used=True)
+            reset_token = PasswordResetToken.objects.create(user=user)
+
+            try:
+                send_password_reset_email(user, reset_token.token)
+            except Exception as e:
+                print(f"Error sending password reset email: {e}")
+
+        except User.DoesNotExist:
+            pass
+
+        return Response({
+            'success': True,
+            'message': 'If an account with this email exists, a password reset link has been sent.'
+        }, status=status.HTTP_200_OK)
+
+
+class ValidateResetTokenView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ValidateResetTokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        token = serializer.validated_data['token']
+
+        try:
+            reset_token = PasswordResetToken.objects.get(token=token)
+        except PasswordResetToken.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Invalid reset token'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if not reset_token.is_valid():
+            message = 'This token has expired' if reset_token.is_expired() else 'This token has already been used'
+            return Response({
+                'success': False,
+                'message': message
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            'success': True,
+            'message': 'Token is valid',
+            'data': {
+                'email': reset_token.user.email
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class ResetPasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        token = serializer.validated_data['token']
+        password = serializer.validated_data['password']
+
+        try:
+            reset_token = PasswordResetToken.objects.get(token=token)
+        except PasswordResetToken.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Invalid reset token'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if reset_token.is_used:
+            return Response({
+                'success': False,
+                'message': 'This token has already been used'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if reset_token.is_expired():
+            return Response({
+                'success': False,
+                'message': 'This token has expired. Please request a new password reset.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        user = reset_token.user
+        user.set_password(password)
+        user.save()
+
+        reset_token.is_used = True
+        reset_token.save()
+
+        try:
+            send_password_changed_email(user)
+        except Exception as e:
+            print(f"Error sending password changed email: {e}")
+
+        return Response({
+            'success': True,
+            'message': 'Password reset successfully. You can now log in with your new password.'
+        }, status=status.HTTP_200_OK)
+
+
+# ============================================
+# GOOGLE AUTH VIEWS
+# ============================================
+
+class GoogleAuthView(APIView):
+    """
+    Google OAuth authentication view.
+    Accepts Google ID token and returns JWT tokens.
+    """
+    permission_classes = [AllowAny]
+
+    @transaction.atomic
+    def post(self, request):
+        serializer = GoogleAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        credential = serializer.validated_data['credential']
+
+        try:
+            # Verify the Google ID token
+            idinfo = id_token.verify_oauth2_token(
+                credential,
+                google_requests.Request(),
+                settings.GOOGLE_CLIENT_ID
+            )
+
+            # Check if token is issued by Google
+            if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+                return Response({
+                    'success': False,
+                    'message': 'Invalid token issuer'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Extract user info from Google token
+            google_user_id = idinfo['sub']
+            email = idinfo.get('email')
+            first_name = idinfo.get('given_name', '')
+            last_name = idinfo.get('family_name', '')
+            picture = idinfo.get('picture', '')
+            email_verified = idinfo.get('email_verified', False)
+
+            if not email:
+                return Response({
+                    'success': False,
+                    'message': 'Email not provided by Google'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check if social account already exists
+            try:
+                social_account = SocialAccount.objects.get(
+                    provider='google',
+                    provider_id=google_user_id
+                )
+                user = social_account.user
+                created = False
+
+            except SocialAccount.DoesNotExist:
+                # Check if user with this email exists
+                try:
+                    user = User.objects.get(email=email)
+                    created = False
+                except User.DoesNotExist:
+                    # Create new user
+                    user = User.objects.create(
+                        username=email,
+                        email=email,
+                        first_name=first_name,
+                        last_name=last_name,
+                    )
+                    # Set unusable password for social login users
+                    user.set_unusable_password()
+                    user.save()
+                    created = True
+
+                # Create social account link
+                SocialAccount.objects.create(
+                    user=user,
+                    provider='google',
+                    provider_id=google_user_id,
+                    extra_data={
+                        'email': email,
+                        'first_name': first_name,
+                        'last_name': last_name,
+                        'picture': picture,
+                    }
+                )
+
+            # Update user profile
+            if hasattr(user, 'profile'):
+                if email_verified:
+                    user.profile.is_email_verified = True
+                if picture and not user.profile.avatar:
+                    user.profile.avatar = picture
+                user.profile.save()
+
+            # Update user info if needed
+            if not user.first_name and first_name:
+                user.first_name = first_name
+            if not user.last_name and last_name:
+                user.last_name = last_name
+            user.save()
+
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+
+            return Response({
+                'success': True,
+                'message': 'Google login successful',
+                'data': {
+                    'user': UserSerializer(user).data,
+                    'tokens': {
+                        'access': str(refresh.access_token),
+                        'refresh': str(refresh),
+                    },
+                    'created': created,
+                }
+            }, status=status.HTTP_200_OK)
+
+        except ValueError as e:
+            # Invalid token
+            return Response({
+                'success': False,
+                'message': f'Invalid Google token: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Google authentication failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class SocialAccountsView(generics.ListAPIView):
+    """
+    List connected social accounts for current user.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = SocialAccountSerializer
+
+    def get_queryset(self):
+        return SocialAccount.objects.filter(user=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'success': True,
+            'data': serializer.data
+        })
+
+
+class DisconnectSocialAccountView(APIView):
+    """
+    Disconnect a social account from user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, provider):
+        user = request.user
+
+        # Check if user has a password set (can still login without social)
+        if not user.has_usable_password():
+            # Check if this is the only social account
+            social_accounts = SocialAccount.objects.filter(user=user)
+            if social_accounts.count() <= 1:
+                return Response({
+                    'success': False,
+                    'message': 'Cannot disconnect the only login method. Please set a password first.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            social_account = SocialAccount.objects.get(user=user, provider=provider)
+            social_account.delete()
+
+            return Response({
+                'success': True,
+                'message': f'{provider.title()} account disconnected successfully'
+            }, status=status.HTTP_200_OK)
+
+        except SocialAccount.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': f'No {provider.title()} account connected'
+            }, status=status.HTTP_404_NOT_FOUND)

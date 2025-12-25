@@ -1,0 +1,133 @@
+<!-- backend/templates/emails/verification.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Email</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #2563eb;
+            margin: 0;
+            font-size: 28px;
+        }
+
+        .content {
+            margin-bottom: 30px;
+        }
+
+        .content p {
+            margin: 0 0 15px;
+        }
+
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .button {
+            display: inline-block;
+            background-color: #2563eb;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 14px 40px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .button:hover {
+            background-color: #1d4ed8;
+        }
+
+        .link-text {
+            background-color: #f3f4f6;
+            padding: 15px;
+            border-radius: 6px;
+            word-break: break-all;
+            font-size: 14px;
+            color: #6b7280;
+            margin: 20px 0;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .warning {
+            background-color: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #92400e;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Verify Your Email</h1>
+        </div>
+
+        <div class="content">
+            <p>Hi {{ user.first_name|default:"there" }},</p>
+
+            <p>Thank you for creating an account! Please verify your email address by clicking the button below:</p>
+
+            <div class="button-container">
+                <a href="{{ verification_url }}" class="button">Verify Email Address</a>
+            </div>
+
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+
+            <div class="link-text">
+                {{ verification_url }}
+            </div>
+
+            <div class="warning">
+                ⏰ This link will expire in {{ expiry_hours }} hours.
+            </div>
+
+            <p>If you didn't create an account, you can safely ignore this email.</p>
+        </div>
+
+        <div class="footer">
+            <p>© 2024 My App. All rights reserved.</p>
+            <p>This is an automated email, please do not reply.</p>
+        </div>
+    </div>
+</body>
+
+</html>
