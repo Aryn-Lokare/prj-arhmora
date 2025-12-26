@@ -16,6 +16,8 @@ from .views import (
     ForgotPasswordView,
     ValidateResetTokenView,
     ResetPasswordView,
+    # Google Auth
+    GoogleAuthView,
 )
 
 urlpatterns = [
@@ -35,4 +37,7 @@ urlpatterns = [
     path('auth/forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
     path('auth/validate-reset-token/', ValidateResetTokenView.as_view(), name='validate_reset_token'),
     path('auth/reset-password/', ResetPasswordView.as_view(), name='reset_password'),
+    
+    # Google auth endpoint
+    path('auth/google/', GoogleAuthView.as_view(), name='google_auth'),
 ]
