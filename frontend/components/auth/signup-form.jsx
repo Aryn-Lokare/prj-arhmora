@@ -94,34 +94,41 @@ export function SignupForm() {
     };
 
     return (
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md tech-card border-t-4 border-t-primary">
             <CardHeader className="space-y-1">
-                <CardTitle className="text-2xl font-bold text-center">
-                    Create an account
+                <div className="flex justify-center mb-4">
+                    <div className="px-3 py-1 bg-primary/10 border border-primary/20 rounded-sm">
+                        <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary font-bold">New Account</span>
+                    </div>
+                </div>
+                <CardTitle className="text-2xl font-bold text-center tracking-tight">
+                    Create Account
                 </CardTitle>
-                <CardDescription className="text-center">
-                    Enter your details to create your account
+                <CardDescription className="text-center font-mono text-[11px] uppercase tracking-wider">
+                    Sign up to start using our platform
                 </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
                 {/* Error Alert */}
                 {error && (
-                    <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
-                        {error}
+                    <div className="p-3 text-[12px] font-mono text-red-600 bg-red-50 border border-red-200 rounded-sm">
+                        <span className="font-bold mr-2">[ERROR]</span>{error}
                     </div>
                 )}
 
                 {/* Google Login Button */}
-                <GoogleLoginButton onError={handleGoogleError} />
+                <div className="rounded-sm overflow-hidden">
+                    <GoogleLoginButton onError={handleGoogleError} />
+                </div>
 
                 {/* Divider */}
                 <div className="relative">
                     <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-300"></div>
+                        <div className="w-full border-t border-border/60"></div>
                     </div>
-                    <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-white text-gray-500">Or sign up with email</span>
+                    <div className="relative flex justify-center text-[10px] font-mono uppercase tracking-widest">
+                        <span className="px-2 bg-background text-muted-foreground">Standard Sign Up</span>
                     </div>
                 </div>
 
@@ -129,74 +136,79 @@ export function SignupForm() {
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     {/* Name Fields */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="firstName">First Name</Label>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="firstName" className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">First Name</Label>
                             <Input
                                 id="firstName"
                                 placeholder="John"
+                                className="rounded-sm border-border/60 focus:ring-1 font-mono text-sm placeholder:opacity-30"
                                 {...register("firstName")}
                                 disabled={isLoading}
                             />
                             {errors.firstName && (
-                                <p className="text-sm text-red-500">{errors.firstName.message}</p>
+                                <p className="text-[10px] font-mono text-red-500 uppercase">{errors.firstName.message}</p>
                             )}
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="lastName">Last Name</Label>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="lastName" className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Last Name</Label>
                             <Input
                                 id="lastName"
                                 placeholder="Doe"
+                                className="rounded-sm border-border/60 focus:ring-1 font-mono text-sm placeholder:opacity-30"
                                 {...register("lastName")}
                                 disabled={isLoading}
                             />
                             {errors.lastName && (
-                                <p className="text-sm text-red-500">{errors.lastName.message}</p>
+                                <p className="text-[10px] font-mono text-red-500 uppercase">{errors.lastName.message}</p>
                             )}
                         </div>
                     </div>
 
                     {/* Email */}
-                    <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="email" className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Email Address</Label>
                         <Input
                             id="email"
                             type="email"
-                            placeholder="john@example.com"
+                            placeholder="user@example.com"
+                            className="rounded-sm border-border/60 focus:ring-1 font-mono text-sm placeholder:opacity-30"
                             {...register("email")}
                             disabled={isLoading}
                         />
                         {errors.email && (
-                            <p className="text-sm text-red-500">{errors.email.message}</p>
+                            <p className="text-[10px] font-mono text-red-500 uppercase">{errors.email.message}</p>
                         )}
                     </div>
 
                     {/* Password */}
-                    <div className="space-y-2">
-                        <Label htmlFor="password">Password</Label>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="password" className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Password</Label>
                         <Input
                             id="password"
                             type="password"
                             placeholder="••••••••"
+                            className="rounded-sm border-border/60 focus:ring-1 font-mono text-sm"
                             {...register("password")}
                             disabled={isLoading}
                         />
                         {errors.password && (
-                            <p className="text-sm text-red-500">{errors.password.message}</p>
+                            <p className="text-[10px] font-mono text-red-500 uppercase">{errors.password.message}</p>
                         )}
                     </div>
 
                     {/* Confirm Password */}
-                    <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="confirmPassword" className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Confirm Password</Label>
                         <Input
                             id="confirmPassword"
                             type="password"
                             placeholder="••••••••"
+                            className="rounded-sm border-border/60 focus:ring-1 font-mono text-sm"
                             {...register("confirmPassword")}
                             disabled={isLoading}
                         />
                         {errors.confirmPassword && (
-                            <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
+                            <p className="text-[10px] font-mono text-red-500 uppercase">{errors.confirmPassword.message}</p>
                         )}
                     </div>
 
@@ -207,39 +219,40 @@ export function SignupForm() {
                             checked={acceptTerms}
                             onCheckedChange={(checked) => setValue("acceptTerms", checked)}
                             disabled={isLoading}
+                            className="rounded-none border-primary/40 data-[state=checked]:bg-primary"
                         />
                         <div className="grid gap-1.5 leading-none">
                             <label
                                 htmlFor="acceptTerms"
-                                className="text-sm font-medium leading-none cursor-pointer"
+                                className="text-[10px] font-mono uppercase tracking-tight text-muted-foreground cursor-pointer leading-tight"
                             >
                                 I agree to the{" "}
-                                <Link href="/terms" className="text-primary hover:underline">
+                                <Link href="/terms" className="text-primary font-bold hover:underline">
                                     Terms
                                 </Link>{" "}
                                 and{" "}
-                                <Link href="/privacy" className="text-primary hover:underline">
+                                <Link href="/privacy" className="text-primary font-bold hover:underline">
                                     Privacy Policy
                                 </Link>
                             </label>
                             {errors.acceptTerms && (
-                                <p className="text-sm text-red-500">{errors.acceptTerms.message}</p>
+                                <p className="text-[10px] font-mono text-red-500 uppercase">{errors.acceptTerms.message}</p>
                             )}
                         </div>
                     </div>
 
                     {/* Submit Button */}
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                        {isLoading ? "Creating account..." : "Create account"}
+                    <Button type="submit" className="w-full rounded-sm font-mono uppercase tracking-widest text-xs h-11" disabled={isLoading}>
+                        {isLoading ? "Signing up..." : "Create Account"}
                     </Button>
                 </form>
             </CardContent>
 
-            <CardFooter className="flex justify-center">
-                <p className="text-sm text-gray-600">
+            <CardFooter className="flex justify-center border-t border-border/40 mt-4 pt-4">
+                <p className="text-[11px] font-mono text-muted-foreground uppercase tracking-tight">
                     Already have an account?{" "}
-                    <Link href="/login" className="text-primary font-medium hover:underline">
-                        Sign in
+                    <Link href="/login" className="text-primary font-bold hover:underline">
+                        Log In
                     </Link>
                 </p>
             </CardFooter>

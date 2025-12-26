@@ -24,73 +24,92 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8">
-            <div className="max-w-4xl mx-auto">
+        <div className="min-h-screen p-8">
+            <div className="max-w-6xl mx-auto space-y-8">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border/40 pb-6">
                     <div>
-                        <h1 className="text-3xl font-bold">Dashboard</h1>
-                        <p className="text-gray-600">Welcome back, {user?.first_name}!</p>
+                        <div className="inline-flex items-center gap-2 px-2 py-0.5 bg-primary/10 border border-primary/20 rounded-sm mb-2">
+                            <span className="text-[9px] font-mono uppercase tracking-widest text-primary font-bold">Account Protected</span>
+                        </div>
+                        <h1 className="text-4xl font-black tracking-tighter uppercase">My <span className="text-primary italic">Dashboard</span></h1>
+                        <p className="text-muted-foreground font-mono text-[11px] uppercase tracking-wider">Welcome back, {user?.first_name} // Session active</p>
                     </div>
-                    <Button variant="outline" onClick={logout}>
-                        Logout
+                    <Button variant="outline" onClick={logout} className="rounded-sm font-mono uppercase tracking-widest text-xs h-9 glass">
+                        Log Out
                     </Button>
                 </div>
 
-                {/* User Info Card */}
-                <Card className="mb-8">
-                    <CardHeader>
-                        <CardTitle>Profile Information</CardTitle>
-                        <CardDescription>Your account details</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <p className="text-sm text-gray-500">Name</p>
-                                <p className="font-medium">
-                                    {user?.first_name} {user?.last_name}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-500">Email</p>
-                                <p className="font-medium">{user?.email}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-500">Username</p>
-                                <p className="font-medium">{user?.username}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-500">Member Since</p>
-                                <p className="font-medium">
-                                    {new Date(user?.date_joined).toLocaleDateString()}
-                                </p>
-                            </div>
+                <div className="grid lg:grid-cols-3 gap-8">
+                    {/* User Info Card */}
+                    <Card className="lg:col-span-2 tech-card overflow-hidden">
+                        <div className="bg-primary/5 px-6 py-2 border-b border-border/40 flex items-center justify-between">
+                            <span className="text-[10px] font-mono uppercase tracking-[0.2em] font-bold text-muted-foreground">User Profile</span>
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>
                         </div>
-                    </CardContent>
-                </Card>
-
-                {/* Quick Actions */}
-                <div className="grid md:grid-cols-3 gap-6">
-                    <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-                        <CardHeader>
-                            <CardTitle className="text-lg">Edit Profile</CardTitle>
-                            <CardDescription>Update your information</CardDescription>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-xl font-bold tracking-tight uppercase">Personal Details</CardTitle>
                         </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">Full Name</p>
+                                    <p className="font-bold tracking-tight text-lg">
+                                        {user?.first_name} {user?.last_name}
+                                    </p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">Email Address</p>
+                                    <p className="font-mono text-sm font-bold border-b border-primary/20 inline-block">{user?.email}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">Username</p>
+                                    <p className="font-bold tracking-tight uppercase">{user?.username}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">Joined Date</p>
+                                    <p className="font-mono text-sm font-bold">
+                                        {new Date(user?.date_joined).toLocaleDateString()}
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
                     </Card>
 
-                    <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-                        <CardHeader>
-                            <CardTitle className="text-lg">Change Password</CardTitle>
-                            <CardDescription>Update your password</CardDescription>
-                        </CardHeader>
-                    </Card>
+                    {/* Quick Actions */}
+                    <div className="space-y-6">
+                        <div className="text-[10px] font-mono uppercase tracking-[0.3em] font-black text-primary pl-1">Account Options</div>
 
-                    <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-                        <CardHeader>
-                            <CardTitle className="text-lg">Settings</CardTitle>
-                            <CardDescription>Manage preferences</CardDescription>
-                        </CardHeader>
-                    </Card>
+                        <Card className="tech-card group cursor-pointer border-l-2 border-l-transparent hover:border-l-primary transition-all">
+                            <CardHeader className="p-5">
+                                <div className="flex items-center justify-between mb-1">
+                                    <CardTitle className="text-sm font-bold uppercase tracking-widest">Edit Profile</CardTitle>
+                                    <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity font-mono text-xs">→</span>
+                                </div>
+                                <CardDescription className="text-[10px] font-mono uppercase">Change your account details</CardDescription>
+                            </CardHeader>
+                        </Card>
+
+                        <Card className="tech-card group cursor-pointer border-l-2 border-l-transparent hover:border-l-primary transition-all">
+                            <CardHeader className="p-5">
+                                <div className="flex items-center justify-between mb-1">
+                                    <CardTitle className="text-sm font-bold uppercase tracking-widest">Security Keys</CardTitle>
+                                    <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity font-mono text-xs">→</span>
+                                </div>
+                                <CardDescription className="text-[10px] font-mono uppercase">Manage your passwords</CardDescription>
+                            </CardHeader>
+                        </Card>
+
+                        <Card className="tech-card group cursor-pointer border-l-2 border-l-transparent hover:border-l-primary transition-all">
+                            <CardHeader className="p-5">
+                                <div className="flex items-center justify-between mb-1">
+                                    <CardTitle className="text-sm font-bold uppercase tracking-widest">Settings</CardTitle>
+                                    <span className="text-primary opacity-0 group-hover:opacity-100 transition-opacity font-mono text-xs">→</span>
+                                </div>
+                                <CardDescription className="text-[10px] font-mono uppercase">Account preferences</CardDescription>
+                            </CardHeader>
+                        </Card>
+                    </div>
                 </div>
             </div>
         </div>
