@@ -4,7 +4,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import Profile, SocialAccount
+from .models import Profile, SocialAccount, ScanHistory, ScanFinding
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -147,3 +147,18 @@ class SocialAccountSerializer(serializers.ModelSerializer):
         model = SocialAccount
         fields = ('id', 'provider', 'created_at')
         read_only_fields = ('id', 'provider', 'created_at')
+
+
+class ScanFindingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ScanFinding
+        fields = ('id', 'v_type', 'severity', 'affected_url', 'evidence', 'remediation')
+
+
+class ScanHistorySerializer(serializers.ModelSerializer):
+    findings = ScanFindingSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = ScanHistory
+        fields = ('id', 'target_url', 'timestamp', 'status', 'task_id', 'findings')
+        read_only_fields = ('id', 'timestamp', 'status', 'task_id')

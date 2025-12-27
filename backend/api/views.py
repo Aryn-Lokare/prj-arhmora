@@ -1,5 +1,11 @@
 # backend/api/views.py
 
+from .tasks import run_web_scan
+
+from .scanner.crawler import Crawler
+from .scanner.scanners import VulnerabilityScanner
+from .scanner.report_builder import ReportBuilder
+
 from rest_framework import status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -16,7 +22,7 @@ from django.conf import settings
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
-from .models import EmailVerificationToken, PasswordResetToken, Profile, SocialAccount
+from .models import EmailVerificationToken, PasswordResetToken, Profile, SocialAccount, ScanHistory, ScanFinding
 from .serializers import (
     UserSerializer,
     RegisterSerializer,
@@ -30,6 +36,8 @@ from .serializers import (
     ValidateResetTokenSerializer,
     GoogleAuthSerializer,
     SocialAccountSerializer,
+    ScanHistorySerializer,
+    ScanFindingSerializer,
 )
 from .utils import send_verification_email, send_password_reset_email, send_password_changed_email
 
@@ -608,3 +616,93 @@ class DisconnectSocialAccountView(APIView):
                 'success': False,
                 'message': f'No {provider.title()} account connected'
             }, status=status.HTTP_404_NOT_FOUND)
+
+
+# ============================================
+# SCANNER VIEWS
+# ============================================
+
+class ScanView(APIView):
+    """
+    API endpoint to initiate a web vulnerability scan asynchronously.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        target_url = request.data.get('target_url')
+        
+        if not target_url:
+            return Response({
+                'success': False,
+                'message': 'Target URL is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if not target_url.startswith(('http://', 'https://')):
+            return Response({
+                'success': False,
+                'message': 'Invalid URL format'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # 1. Create ScanHistory record
+            scan_history = ScanHistory.objects.create(
+                user=request.user,
+                target_url=target_url,
+                status='Pending'
+            )
+
+            # 2. Trigger async task
+            run_web_scan.delay(scan_history.id, target_url)
+
+            return Response({
+                'success': True,
+                'message': 'Scan initiated successfully',
+                'data': {
+                    'scan_id': scan_history.id,
+                    'status': 'Pending'
+                }
+            }, status=status.HTTP_202_ACCEPTED)
+
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Scan initiation failed: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ScanHistoryView(generics.ListAPIView):
+    """
+    List all scans for the authenticated user.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = ScanHistorySerializer
+
+    def get_queryset(self):
+        return ScanHistory.objects.filter(user=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'success': True,
+            'data': serializer.data
+        })
+
+
+class ScanResultView(generics.RetrieveAPIView):
+    """
+    Retrieve detailed results for a specific scan.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = ScanHistorySerializer
+
+    def get_queryset(self):
+        return ScanHistory.objects.filter(user=self.request.user)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response({
+            'success': True,
+            'data': serializer.data
+        })

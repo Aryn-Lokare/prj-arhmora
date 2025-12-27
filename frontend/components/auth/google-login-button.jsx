@@ -45,6 +45,7 @@ export function GoogleLoginButton({ onSuccess, onError }) {
                 onSuccess={handleSuccess}
                 onError={handleError}
                 useOneTap
+                use_fedcm_for_prompt={true}
                 theme="outline"
                 size="large"
                 text="continue_with"

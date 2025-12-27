@@ -18,6 +18,10 @@ from .views import (
     ResetPasswordView,
     # Google Auth
     GoogleAuthView,
+    # Scanner
+    ScanView,
+    ScanHistoryView,
+    ScanResultView,
 )
 
 urlpatterns = [
@@ -40,4 +44,9 @@ urlpatterns = [
     
     # Google auth endpoint
     path('auth/google/', GoogleAuthView.as_view(), name='google_auth'),
+    
+    # Scanner endpoints
+    path('scan/', ScanView.as_view(), name='scan'),
+    path('scan/history/', ScanHistoryView.as_view(), name='scan_history'),
+    path('scan/results/<int:pk>/', ScanResultView.as_view(), name='scan_result'),
 ]

@@ -93,6 +93,45 @@ class SocialAccount(models.Model):
         return f"{self.user.email} - {self.provider}"
 
 
+
+class ScanHistory(models.Model):
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Completed', 'Completed'),
+        ('Failed', 'Failed'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='scans')
+    target_url = models.URLField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    task_id = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"Scan for {self.target_url} by {self.user.username}"
+
+
+class ScanFinding(models.Model):
+    SEVERITY_CHOICES = [
+        ('Low', 'Low'),
+        ('Medium', 'Medium'),
+        ('High', 'High'),
+    ]
+
+    scan = models.ForeignKey(ScanHistory, on_delete=models.CASCADE, related_name='findings')
+    v_type = models.CharField(max_length=100)
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES)
+    affected_url = models.URLField()
+    evidence = models.TextField()
+    remediation = models.TextField()
+
+    def __str__(self):
+        return f"{self.v_type} ({self.severity}) on {self.affected_url}"
+
+
 # Signals
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -107,4 +146,4 @@ def save_user_profile(sender, instance, **kwargs):
     if hasattr(instance, 'profile'):
         instance.profile.save()
 
-    
+   
