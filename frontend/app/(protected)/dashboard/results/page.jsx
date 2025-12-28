@@ -7,7 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { DashHeader } from "@/components/layout/dash-header";
-import { Plus, Globe, ChevronRight, Check, AlertCircle, Shield, ExternalLink, Activity, Info, AlertTriangle } from "lucide-react";
+import { Plus, Globe, ChevronRight, Check, AlertCircle, Shield, ExternalLink, Activity, Info, AlertTriangle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 
@@ -119,11 +119,22 @@ function ResultsContent() {
             stats: [
                 { label: "Critical", count: severityCounts.High, color: "text-red-600", bg: "bg-red-500" },
                 { label: "Moderate", count: severityCounts.Medium, color: "text-amber-600", bg: "bg-amber-500" },
-                { label: "Common", count: severityCounts.Low, color: "text-emerald-600", bg: "bg-emerald-500" }
+                { label: "Potential", count: severityCounts.Low, color: "text-indigo-600", bg: "bg-indigo-500" }
             ]
         }]);
 
         findings.forEach((finding, i) => {
+            const isAI = finding.v_type === 'AI-Detected Anomaly';
+
+            // Refined color mapping
+            const colorMap = {
+                High: { bg: 'bg-red-500', text: 'text-red-700', border: 'border-red-100' },
+                Medium: { bg: 'bg-amber-500', text: 'text-amber-700', border: 'border-amber-100' },
+                Low: { bg: 'bg-indigo-500', text: 'text-indigo-700', border: 'border-indigo-100' }
+            };
+
+            const styles = colorMap[finding.severity] || colorMap.Low;
+
             setTimeout(() => {
                 setMessages(prev => [...prev, {
                     type: "issue",
@@ -131,9 +142,10 @@ function ResultsContent() {
                     title: finding.v_type,
                     description: finding.evidence,
                     remediation: finding.remediation,
-                    color: finding.severity === 'High' ? 'bg-red-500' : finding.severity === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500',
-                    textColor: finding.severity === 'High' ? 'text-red-700' : finding.severity === 'Medium' ? 'text-amber-700' : 'text-emerald-700',
-                    borderColor: finding.severity === 'High' ? 'border-red-100' : finding.severity === 'Medium' ? 'border-amber-100' : 'border-emerald-100'
+                    isAI: isAI,
+                    color: styles.bg,
+                    textColor: styles.text,
+                    borderColor: styles.border
                 }]);
             }, i * 400);
         });
@@ -213,15 +225,23 @@ function ResultsContent() {
                                             <div className={cn("mt-1.5 w-3 h-3 rounded-full shrink-0 shadow-sm animate-pulse", msg.color)}></div>
                                             <div className="flex-1">
                                                 <div className="flex items-center justify-between mb-2">
-                                                    <span className={cn("text-[10px] font-black uppercase tracking-[0.2em]", msg.textColor)}>
-                                                        {msg.severity} PRIORITY THREAT
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={cn("text-[10px] font-black uppercase tracking-[0.2em]", msg.textColor)}>
+                                                            {msg.severity} PRIORITY THREAT
+                                                        </span>
+                                                        {msg.isAI && (
+                                                            <div className="flex items-center gap-1 bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100 animate-pulse">
+                                                                <Sparkles className="w-2.5 h-2.5" />
+                                                                <span className="text-[8px] font-black uppercase tracking-wider">Neural Intelligence</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                     {msg.severity === 'High' && <AlertTriangle className="w-4 h-4 text-red-500" />}
                                                 </div>
                                                 <h3 className="font-bold text-xl mb-2 tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">{msg.title}</h3>
                                                 <div className="flex items-start gap-2 bg-slate-50 p-4 rounded-xl mb-6 mt-4 border border-slate-100/50">
                                                     <Info className="w-4 h-4 text-slate-400 mt-0.5" />
-                                                    <p className="text-slate-600 text-sm font-medium leading-relaxed italic">"{msg.description}"</p>
+                                                    <p className="text-slate-600 text-sm font-medium leading-relaxed italic">&quot;{msg.description}&quot;</p>
                                                 </div>
 
                                                 <div className="space-y-3">

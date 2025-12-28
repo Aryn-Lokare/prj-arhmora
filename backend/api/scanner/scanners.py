@@ -2,6 +2,8 @@ import requests
 import logging
 from urllib.parse import urlparse, urljoin
 import socket
+import os
+from .ai_model import AIInference
 
 logger = logging.getLogger(__name__)
 
@@ -10,6 +12,10 @@ class VulnerabilityScanner:
         self.target_url = target_url
         self.domain = urlparse(target_url).netloc
         self.findings = []
+        
+        # Initialize AI Inference engine
+        model_dir = os.path.dirname(os.path.abspath(__file__))
+        self.ai_engine = AIInference(model_dir=model_dir)
 
     def log_finding(self, v_type, url, severity, evidence, remediation):
         self.findings.append({
@@ -29,6 +35,7 @@ class VulnerabilityScanner:
         for url in crawled_data.get('visited_urls', []):
             self.test_sql_injection(url)
             self.test_xss(url)
+            self.check_ai_anomaly(url)
 
         return self.findings
 
@@ -146,3 +153,19 @@ class VulnerabilityScanner:
                     )
         except Exception as e:
             logger.error(f"SSRF check error: {e}")
+    def check_ai_anomaly(self, url):
+        """Uses AI model to detect suspicious patterns in the URL."""
+        if not self.ai_engine.loaded:
+            return
+
+        malicious_prob = self.ai_engine.predict(url)
+        severity = self.ai_engine.calculate_severity(malicious_prob)
+        
+        if severity != "Info":
+            self.log_finding(
+                'AI-Detected Anomaly',
+                url,
+                severity,
+                f"AI model flagged this URL as suspicious (Confidence: {malicious_prob:.2%})",
+                "Review the URL for unusual character distributions or patterns common in injection attacks that might bypass traditional rules."
+            )

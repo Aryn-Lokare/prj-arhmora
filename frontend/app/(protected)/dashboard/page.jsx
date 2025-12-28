@@ -63,7 +63,7 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-2 mb-2">
                             <div className="bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 flex items-center gap-1.5">
                                 <Sparkles className="w-3 h-3 text-blue-500" />
-                                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Arhmora Security Cloud</span>
+                                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">XGBoost-Powered Security Cloud</span>
                             </div>
                         </div>
                         <h1 className="text-4xl font-bold tracking-tight text-[#0F172A] mb-2">
@@ -84,7 +84,7 @@ export default function DashboardPage() {
                                 Launch a new security scan
                             </h2>
                             <p className="text-slate-500 text-sm font-medium mb-10 leading-relaxed capitalize">
-                                Scan for SQL injection, XSS, and security misconfigurations in minutes.
+                                Scan for SQL injection, XSS, and security misconfigurations in minutes with XGBoost-powered analysis.
                             </p>
 
                             <form onSubmit={startScan} className="relative flex items-center group">
