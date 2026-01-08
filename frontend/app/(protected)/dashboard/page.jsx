@@ -1,20 +1,18 @@
-// frontend/app/(protected)/dashboard/page.jsx
-
 "use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
+import { PageLoader } from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
 import { DashHeader } from "@/components/layout/dash-header";
-import { Search, Globe, ArrowRight, Clock, Shield, Sparkles, AlertCircle } from "lucide-react";
+import { Globe, ArrowRight, Clock, Shield, Sparkles } from "lucide-react";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
     const { logout, loading: authLoading, user } = useAuth();
     const router = useRouter();
-    const [url, setUrl] = useState("");
     const [recentScans, setRecentScans] = useState([]);
     const [loadingScans, setLoadingScans] = useState(true);
 
@@ -35,21 +33,8 @@ export default function DashboardPage() {
         }
     };
 
-    const startScan = (e) => {
-        e.preventDefault();
-        if (!url) return;
-        router.push(`/dashboard/results?url=${encodeURIComponent(url)}`);
-    };
-
     if (authLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-white">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
-                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest font-mono">Authenticating...</p>
-                </div>
-            </div>
-        );
+        return <PageLoader text="Verifying Identity..." />;
     }
 
     return (
@@ -70,50 +55,19 @@ export default function DashboardPage() {
                             Hello, {user?.first_name || 'Defender'}
                         </h1>
                         <p className="text-slate-500 font-medium">
-                            Protect your web infrastructure with AI-driven security assessments.
+                            Here is an overview of your security landscape.
                         </p>
                     </div>
 
-                    {/* Search Section */}
-                    <div className="bg-white border border-slate-200 rounded-[32px] p-8 md:p-12 shadow-2xl shadow-slate-200/40 mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100 ring-1 ring-slate-100">
-                        <div className="max-w-[600px] mx-auto text-center">
-                            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 mx-auto border border-blue-100">
-                                <Search className="w-8 h-8 text-blue-500" />
-                            </div>
-                            <h2 className="text-2xl font-bold mb-3 tracking-tight">
-                                Launch a new security scan
-                            </h2>
-                            <p className="text-slate-500 text-sm font-medium mb-10 leading-relaxed capitalize">
-                                Scan for SQL injection, XSS, and security misconfigurations in minutes with XGBoost-powered analysis.
-                            </p>
-
-                            <form onSubmit={startScan} className="relative flex items-center group">
-                                <div className="absolute left-5 text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                                    <Globe className="w-5 h-5" />
-                                </div>
-                                <input
-                                    type="text"
-                                    value={url}
-                                    onChange={(e) => setUrl(e.target.value)}
-                                    placeholder="https://your-website.com"
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-40 py-5 text-[16px] font-medium shadow-inner-sm focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all"
-                                />
-                                <div className="absolute right-2 px-1">
-                                    <Button
-                                        type="submit"
-                                        disabled={!url}
-                                        className="bg-[#3B82F6] hover:bg-[#2563EB] text-white px-8 rounded-xl h-12 font-bold shadow-lg shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50"
-                                    >
-                                        Scan Now
-                                    </Button>
-                                </div>
-                            </form>
-                            <div className="mt-6 flex items-center justify-center gap-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                                <div className="flex items-center gap-1.5"><Shield className="w-3 h-3 text-emerald-500" /> Safe Processing</div>
-                                <div className="flex items-center gap-1.5"><Shield className="w-3 h-3 text-emerald-500" /> No SQL Injection</div>
-                                <div className="flex items-center gap-1.5"><Shield className="w-3 h-3 text-emerald-500" /> Header Checks</div>
-                            </div>
-                        </div>
+                    {/* Action Bar */}
+                    <div className="flex justify-end mb-8">
+                        <Button
+                            onClick={() => router.push('/start-scan')}
+                            className="bg-[#3B82F6] hover:bg-[#2563EB] text-white px-6 rounded-xl h-10 font-bold shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-2"
+                        >
+                            <Globe className="w-4 h-4" />
+                            New Scan
+                        </Button>
                     </div>
 
                     {/* Recent Scans Section */}
@@ -121,14 +75,8 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400 font-mono flex items-center gap-2">
                                 <div className="w-1 h-4 bg-slate-300 rounded-full" />
-                                Recent Security Events
+                                Scan History
                             </h3>
-                            <button
-                                onClick={() => router.push("/dashboard/history")}
-                                className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors uppercase tracking-widest"
-                            >
-                                View all events <ArrowRight className="w-3 h-3" />
-                            </button>
                         </div>
 
                         {loadingScans ? (
@@ -145,7 +93,7 @@ export default function DashboardPage() {
                                 <p className="text-slate-400 font-bold uppercase tracking-widest text-[11px]">Neural Scan Queue Empty</p>
                                 <Button
                                     variant="link"
-                                    onClick={() => document.querySelector('input')?.focus()}
+                                    onClick={() => router.push('/start-scan')}
                                     className="text-blue-500 font-bold"
                                 >
                                     Push your first scan
@@ -156,7 +104,7 @@ export default function DashboardPage() {
                                 {recentScans.map((scan) => (
                                     <div
                                         key={scan.id}
-                                        onClick={() => router.push(`/dashboard/results?scanId=${scan.id}`)}
+                                        onClick={() => router.push(`/scan-result?scanId=${scan.id}`)}
                                         className="bg-white border border-slate-200/80 p-5 rounded-2xl flex items-center justify-between hover:border-blue-400 hover:shadow-xl hover:shadow-blue-500/5 transition-all cursor-pointer group"
                                     >
                                         <div className="flex items-center gap-4">

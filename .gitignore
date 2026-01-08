@@ -39,3 +39,7 @@ frontend/.env.production.local
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Project Specific
+data/
+backend/api/scanner/models/*.pkl

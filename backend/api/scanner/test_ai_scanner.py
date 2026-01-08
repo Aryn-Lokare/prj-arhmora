@@ -1,4 +1,11 @@
 # Test script for AI Scanner
+import sys
+import os
+
+# Add backend directory to path so we can import 'api'
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(BASE_DIR)
+
 from api.scanner.scanners import VulnerabilityScanner
 
 def test_ai_scanner():

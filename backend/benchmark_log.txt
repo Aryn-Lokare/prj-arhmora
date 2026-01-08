@@ -3,22 +3,22 @@
 ============================================================
 
 [1/4] Initializing AI Engine...
-✅ Engine Loaded in 74.83ms
+✅ Engine Loaded in 7.20ms
 
-[2/4] Evaluating Dataset Accuracy (Sample: 2000 URLs)...
-📊 Accuracy:  87.40%
-🛡️ Recall (Attack Detection): 98.31%
-🎯 Precision (Cleanliness): 80.78%
-⚡ Average Latency: 1.60ms per URL
+[2/4] Evaluating Dataset Accuracy (Sample: 2000 records)...
+📊 Accuracy:  92.80%
+🛡️ Recall (Attack Detection): 99.85%
+🎯 Precision (Cleanliness): 90.61%
+⚡ Average Latency: 3.70ms per record
 
 [3/4] Vulnerability Payload Stress Test:
-  - SQL Injection  : Prob: 0.9416 | Severity: Medium | ✅ CAUGHT
-  - XSS Attack     : Prob: 0.7830 | Severity: Info   | ❌ MISSED
-  - Path Traversal : Prob: 0.9315 | Severity: Medium | ✅ CAUGHT
-  - Clean URL      : Prob: 0.9488 | Severity: Medium | ⚠️ FALSE POSITIVE
+  - SQL Injection  : Prob: 0.0000 | Severity: Info   | ❌ MISSED
+  - XSS Attack     : Prob: 0.0000 | Severity: Info   | ❌ MISSED
+  - Path Traversal : Prob: 0.0000 | Severity: Info   | ❌ MISSED
+  - Clean URL      : Prob: 0.0000 | Severity: Info   | ✅ PASSED
 
 [4/4] Conclusion:
 🟢 DETECTION STRENGTH: ELITE (95%+ Attacks Identified)
-🟢 ENGINE SPEED: FAST (1.6ms/req)
+🟢 ENGINE SPEED: FAST (3.7ms/req)
 
 ============================================================

@@ -5,6 +5,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
+import { PageLoader } from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
 import { DashHeader } from "@/components/layout/dash-header";
 import { ArrowRight, Clock, Globe, Shield, Filter, Search, MoreHorizontal } from "lucide-react";
@@ -36,7 +37,7 @@ export default function HistoryPage() {
     };
 
     const handleViewScan = (scanId) => {
-        router.push(`/dashboard/results?scanId=${scanId}`);
+        router.push(`/scan-result?scanId=${scanId}`);
     };
 
     const filteredScans = scans.filter(scan =>
@@ -44,14 +45,7 @@ export default function HistoryPage() {
     );
 
     if (authLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-white">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
-                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest font-mono">Loading Cloud Archive...</p>
-                </div>
-            </div>
-        );
+        return <PageLoader text="Loading Cloud Archive..." />;
     }
 
     return (
@@ -103,7 +97,7 @@ export default function HistoryPage() {
                             <h3 className="text-xl font-bold text-slate-900 mb-2">No records found</h3>
                             <p className="text-slate-500 font-medium mb-8 max-w-xs mx-auto text-sm">We couldn't find any security scans matching your criteria.</p>
                             <Button
-                                onClick={() => router.push("/dashboard")}
+                                onClick={() => router.push("/start-scan")}
                                 className="bg-blue-600 hover:bg-blue-700 rounded-xl font-bold px-8 h-12 shadow-lg shadow-blue-500/10"
                             >
                                 Launch First Scan
@@ -192,7 +186,7 @@ export default function HistoryPage() {
                         <span>Total Scans: {scans.length}</span>
                     </div>
                 </div>
-            </main>
-        </div>
+            </main >
+        </div >
     );
 }

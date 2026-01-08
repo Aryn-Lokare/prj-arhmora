@@ -35,21 +35,24 @@ def run_benchmark():
     log(f"✅ Engine Loaded in {load_time:.2f}ms")
 
     # 2. Dataset Performance
-    log("\n[2/4] Evaluating Dataset Accuracy (Sample: 2000 URLs)...")
+    log("\n[2/4] Evaluating Dataset Accuracy (Sample: 2000 records)...")
     import contextlib
     with contextlib.redirect_stdout(None):
-        data = load_and_preprocess()
+        results = load_and_preprocess()
+        # unpack: X_train_s, X_test_s, y_train, y_test, scaler, encoders, test_df
+        test_df = results[-1]
     
-    test_sample = data.sample(2000, random_state=42)
-    urls = test_sample['url'].tolist()
+    test_sample = test_df.sample(min(2000, len(test_df)), random_state=42)
     y_true = test_sample['label'].tolist()
     y_pred_prob = []
     
     start_time = time.time()
-    for url in urls:
-        y_pred_prob.append(engine.predict(url))
+    for _, row in test_sample.iterrows():
+        # Pass the row as a feature dict
+        feature_dict = row.to_dict()
+        y_pred_prob.append(engine.predict(feature_dict))
     total_inf_time = (time.time() - start_time) * 1000
-    avg_inf_time = total_inf_time / len(urls)
+    avg_inf_time = total_inf_time / len(test_sample) if not test_sample.empty else 0
     
     y_pred = [1 if p >= 0.5 else 0 for p in y_pred_prob]
     acc = accuracy_score(y_true, y_pred)
@@ -59,7 +62,7 @@ def run_benchmark():
     log(f"📊 Accuracy:  {acc:.2%}")
     log(f"🛡️ Recall (Attack Detection): {rec:.2%}")
     log(f"🎯 Precision (Cleanliness): {prec:.2%}")
-    log(f"⚡ Average Latency: {avg_inf_time:.2f}ms per URL")
+    log(f"⚡ Average Latency: {avg_inf_time:.2f}ms per record")
 
     # 3. Payload Stress Test
     log("\n[3/4] Vulnerability Payload Stress Test:")
