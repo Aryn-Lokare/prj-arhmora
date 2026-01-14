@@ -131,10 +131,6 @@ class ValidateResetTokenSerializer(serializers.Serializer):
     token = serializers.UUIDField(required=True)
 
 
-# ============================================
-# GOOGLE AUTH SERIALIZERS
-# ============================================
-
 class GoogleAuthSerializer(serializers.Serializer):
     """Serializer for Google OAuth token"""
     

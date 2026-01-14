@@ -32,3 +32,4 @@ After checking a link, the AI gives it a simple safety score:
 *   🟢 **Low Risk**: Looks safe. Allowed to pass.
 
 You can trust the system to handle the complex security checks in the background, keeping your data safe without slowing you down.
+

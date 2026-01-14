@@ -14,14 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+import { Eye, EyeOff } from "lucide-react";
 
 const signupSchema = z
     .object({
@@ -48,6 +41,8 @@ export function SignupForm() {
     const { register: registerUser } = useAuth();
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const {
         register,
@@ -89,173 +84,172 @@ export function SignupForm() {
         }
     };
 
-    const handleGoogleError = (message) => {
-        setError(message);
-    };
-
     return (
-        <Card className="w-full max-w-md tech-card border-t-4 border-t-primary">
-            <CardHeader className="space-y-1">
-                <div className="flex justify-center mb-4">
-                    <div className="px-3 py-1 bg-primary/10 border border-primary/20 rounded-sm">
-                        <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary font-bold">New Account</span>
-                    </div>
-                </div>
-                <CardTitle className="text-2xl font-bold text-center tracking-tight">
-                    Create Account
-                </CardTitle>
-                <CardDescription className="text-center font-mono text-[11px] uppercase tracking-wider">
-                    Sign up to start using our platform
-                </CardDescription>
-            </CardHeader>
+        <div className="w-full max-w-[450px] flex flex-col items-center animate-in fade-in zoom-in duration-500">
+            {/* Header Section */}
+            <div className="text-center mb-5 w-full">
+                <h1 className="text-[38px] font-bold text-[#0F172A] mb-1 tracking-tight leading-tight">Create Account</h1>
+                <p className="text-[#64748B] text-base font-medium">Join us to start your secure journey</p>
+            </div>
 
-            <CardContent className="space-y-4">
-                {/* Error Alert */}
+            {/* Google Login Section */}
+            <div className="w-full mb-4">
+                <GoogleLoginButton onError={(msg) => setError(msg)} />
+            </div>
+
+            {/* Divider */}
+            <div className="w-full flex items-center gap-4 mb-4">
+                <div className="flex-1 h-[1px] bg-[#E2E8F0]"></div>
+                <span className="text-[#94A3B8] text-[11px] font-bold uppercase tracking-[0.05em] whitespace-nowrap">or Sign Up with Email</span>
+                <div className="flex-1 h-[1px] bg-[#E2E8F0]"></div>
+            </div>
+
+            {/* Signup Form */}
+            <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-3">
                 {error && (
-                    <div className="p-3 text-[12px] font-mono text-red-600 bg-red-50 border border-red-200 rounded-sm">
-                        <span className="font-bold mr-2">[ERROR]</span>{error}
+                    <div className="p-2.5 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg animate-in slide-in-from-top-2">
+                        {error}
                     </div>
                 )}
 
-                {/* Google Login Button */}
-                <div className="rounded-sm overflow-hidden">
-                    <GoogleLoginButton onError={handleGoogleError} />
-                </div>
-
-                {/* Divider */}
-                <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-border/60"></div>
-                    </div>
-                    <div className="relative flex justify-center text-[10px] font-mono uppercase tracking-widest">
-                        <span className="px-2 bg-background text-muted-foreground">Standard Sign Up</span>
-                    </div>
-                </div>
-
-                {/* Signup Form */}
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    {/* Name Fields */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="firstName" className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">First Name</Label>
-                            <Input
-                                id="firstName"
-                                placeholder="John"
-                                className="rounded-sm border-border/60 focus:ring-1 font-mono text-sm placeholder:opacity-30"
-                                {...register("firstName")}
-                                disabled={isLoading}
-                            />
-                            {errors.firstName && (
-                                <p className="text-[10px] font-mono text-red-500 uppercase">{errors.firstName.message}</p>
-                            )}
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="lastName" className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Last Name</Label>
-                            <Input
-                                id="lastName"
-                                placeholder="Doe"
-                                className="rounded-sm border-border/60 focus:ring-1 font-mono text-sm placeholder:opacity-30"
-                                {...register("lastName")}
-                                disabled={isLoading}
-                            />
-                            {errors.lastName && (
-                                <p className="text-[10px] font-mono text-red-500 uppercase">{errors.lastName.message}</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Email */}
+                <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                        <Label htmlFor="email" className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Email Address</Label>
+                        <Label htmlFor="firstName" className="text-sm font-bold text-[#1E293B]">First Name</Label>
                         <Input
-                            id="email"
-                            type="email"
-                            placeholder="user@example.com"
-                            className="rounded-sm border-border/60 focus:ring-1 font-mono text-sm placeholder:opacity-30"
-                            {...register("email")}
+                            id="firstName"
+                            placeholder="John"
+                            className="h-10 border-[#E2E8F0] rounded-lg focus-visible:ring-primary focus-visible:border-primary placeholder:text-[#94A3B8] transition-all"
+                            {...register("firstName")}
                             disabled={isLoading}
                         />
-                        {errors.email && (
-                            <p className="text-[10px] font-mono text-red-500 uppercase">{errors.email.message}</p>
+                        {errors.firstName && (
+                            <p className="text-[11px] text-red-500 font-medium px-1 mt-1">{errors.firstName.message}</p>
                         )}
                     </div>
-
-                    {/* Password */}
                     <div className="space-y-1.5">
-                        <Label htmlFor="password" className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Password</Label>
+                        <Label htmlFor="lastName" className="text-sm font-bold text-[#1E293B]">Last Name</Label>
+                        <Input
+                            id="lastName"
+                            placeholder="Doe"
+                            className="h-10 border-[#E2E8F0] rounded-lg focus-visible:ring-primary focus-visible:border-primary placeholder:text-[#94A3B8] transition-all"
+                            {...register("lastName")}
+                            disabled={isLoading}
+                        />
+                        {errors.lastName && (
+                            <p className="text-[11px] text-red-500 font-medium px-1 mt-1">{errors.lastName.message}</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="space-y-1.5">
+                    <Label htmlFor="email" className="text-sm font-bold text-[#1E293B]">Email</Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        placeholder="E.g. johndoe@email.com"
+                        className="h-10 border-[#E2E8F0] rounded-lg focus-visible:ring-primary focus-visible:border-primary placeholder:text-[#94A3B8] transition-all"
+                        {...register("email")}
+                        disabled={isLoading}
+                    />
+                    {errors.email && (
+                        <p className="text-[11px] text-red-500 font-medium px-1 mt-1">{errors.email.message}</p>
+                    )}
+                </div>
+
+                <div className="space-y-1.5">
+                    <Label htmlFor="password" className="text-sm font-bold text-[#1E293B]">Password</Label>
+                    <div className="relative">
                         <Input
                             id="password"
-                            type="password"
-                            placeholder="••••••••"
-                            className="rounded-sm border-border/60 focus:ring-1 font-mono text-sm"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Create a password"
+                            className="h-10 border-[#E2E8F0] rounded-lg focus-visible:ring-primary focus-visible:border-primary placeholder:text-[#94A3B8] pr-10 transition-all"
                             {...register("password")}
                             disabled={isLoading}
                         />
-                        {errors.password && (
-                            <p className="text-[10px] font-mono text-red-500 uppercase">{errors.password.message}</p>
-                        )}
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#64748B] transition-colors focus:outline-none"
+                        >
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
                     </div>
+                    {errors.password && (
+                        <p className="text-[11px] text-red-500 font-medium px-1 mt-1">{errors.password.message}</p>
+                    )}
+                </div>
 
-                    {/* Confirm Password */}
-                    <div className="space-y-1.5">
-                        <Label htmlFor="confirmPassword" className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Confirm Password</Label>
+                <div className="space-y-1.5">
+                    <Label htmlFor="confirmPassword" className="text-sm font-bold text-[#1E293B]">Confirm Password</Label>
+                    <div className="relative">
                         <Input
                             id="confirmPassword"
-                            type="password"
-                            placeholder="••••••••"
-                            className="rounded-sm border-border/60 focus:ring-1 font-mono text-sm"
+                            type={showConfirmPassword ? "text" : "password"}
+                            placeholder="Confirm your password"
+                            className="h-10 border-[#E2E8F0] rounded-lg focus-visible:ring-primary focus-visible:border-primary placeholder:text-[#94A3B8] pr-10 transition-all"
                             {...register("confirmPassword")}
                             disabled={isLoading}
                         />
-                        {errors.confirmPassword && (
-                            <p className="text-[10px] font-mono text-red-500 uppercase">{errors.confirmPassword.message}</p>
+                        <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#64748B] transition-colors focus:outline-none"
+                        >
+                            {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                    </div>
+                    {errors.confirmPassword && (
+                        <p className="text-[11px] text-red-500 font-medium px-1 mt-1">{errors.confirmPassword.message}</p>
+                    )}
+                </div>
+
+                <div className="flex items-start space-x-3 py-0.5">
+                    <Checkbox 
+                        id="acceptTerms" 
+                        checked={acceptTerms}
+                        onCheckedChange={(checked) => setValue("acceptTerms", checked)}
+                        disabled={isLoading}
+                        className="mt-1 border-[#CBD5E1] rounded-md data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all" 
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                        <label
+                            htmlFor="acceptTerms"
+                            className="text-xs font-bold text-[#64748B] cursor-pointer select-none leading-normal"
+                        >
+                            I agree to the{" "}
+                            <Link href="/terms" className="text-primary hover:underline">
+                                Terms
+                            </Link>{" "}
+                            and{" "}
+                            <Link href="/privacy" className="text-primary hover:underline">
+                                Privacy Policy
+                            </Link>
+                        </label>
+                        {errors.acceptTerms && (
+                            <p className="text-[11px] text-red-500 font-medium mt-0.5">{errors.acceptTerms.message}</p>
                         )}
                     </div>
+                </div>
 
-                    {/* Terms */}
-                    <div className="flex items-start space-x-2">
-                        <Checkbox
-                            id="acceptTerms"
-                            checked={acceptTerms}
-                            onCheckedChange={(checked) => setValue("acceptTerms", checked)}
-                            disabled={isLoading}
-                            className="rounded-none border-primary/40 data-[state=checked]:bg-primary"
-                        />
-                        <div className="grid gap-1.5 leading-none">
-                            <label
-                                htmlFor="acceptTerms"
-                                className="text-[10px] font-mono uppercase tracking-tight text-muted-foreground cursor-pointer leading-tight"
-                            >
-                                I agree to the{" "}
-                                <Link href="/terms" className="text-primary font-bold hover:underline">
-                                    Terms
-                                </Link>{" "}
-                                and{" "}
-                                <Link href="/privacy" className="text-primary font-bold hover:underline">
-                                    Privacy Policy
-                                </Link>
-                            </label>
-                            {errors.acceptTerms && (
-                                <p className="text-[10px] font-mono text-red-500 uppercase">{errors.acceptTerms.message}</p>
-                            )}
-                        </div>
-                    </div>
+                <Button 
+                    type="submit" 
+                    className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-bold text-base rounded-lg border-none transition-all duration-200 shadow-sm active:scale-[0.98] mt-1"
+                    disabled={isLoading}
+                >
+                    {isLoading ? "Creating account..." : "Create Account"}
+                </Button>
+            </form>
 
-                    {/* Submit Button */}
-                    <Button type="submit" className="w-full rounded-sm font-mono uppercase tracking-widest text-xs h-11" disabled={isLoading}>
-                        {isLoading ? "Signing up..." : "Create Account"}
-                    </Button>
-                </form>
-            </CardContent>
-
-            <CardFooter className="flex justify-center border-t border-border/40 mt-4 pt-4">
-                <p className="text-[11px] font-mono text-muted-foreground uppercase tracking-tight">
+            {/* Footer */}
+            <div className="mt-6 text-center">
+                <p className="text-sm text-[#64748B] font-bold">
                     Already have an account?{" "}
-                    <Link href="/login" className="text-primary font-bold hover:underline">
+                    <Link href="/login" className="text-primary font-bold hover:text-primary/80 transition-colors">
                         Log In
                     </Link>
                 </p>
-            </CardFooter>
-        </Card>
+            </div>
+        </div>
     );
 }

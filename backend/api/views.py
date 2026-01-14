@@ -42,9 +42,6 @@ from .serializers import (
 from .utils import send_verification_email, send_password_reset_email, send_password_changed_email
 
 
-# ============================================
-# AUTH VIEWS (existing)
-# ============================================
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -232,9 +229,6 @@ class CustomTokenRefreshView(TokenRefreshView):
             }, status=status.HTTP_401_UNAUTHORIZED)
 
 
-# ============================================
-# EMAIL VERIFICATION VIEWS (existing)
-# ============================================
 
 class VerifyEmailView(APIView):
     permission_classes = [AllowAny]
@@ -319,9 +313,6 @@ class ResendVerificationView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-# ============================================
-# PASSWORD RESET VIEWS (existing)
-# ============================================
 
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
@@ -432,14 +423,10 @@ class ResetPasswordView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-# ============================================
-# GOOGLE AUTH VIEWS
-# ============================================
-
 class GoogleAuthView(APIView):
     """
     Google OAuth authentication view.
-    Accepts Google ID token and returns JWT tokens.
+    Accepts Google ID token OR Access token and returns JWT tokens.
     """
     permission_classes = [AllowAny]
 
@@ -449,15 +436,18 @@ class GoogleAuthView(APIView):
         serializer.is_valid(raise_exception=True)
 
         credential = serializer.validated_data['credential']
-
+        
+        idinfo = None
+        email = None
+        
         try:
-            # Verify the Google ID token
+            # 1. Attempt to verify as a Google ID token (JWT)
             idinfo = id_token.verify_oauth2_token(
                 credential,
                 google_requests.Request(),
                 settings.GOOGLE_CLIENT_ID
             )
-
+            
             # Check if token is issued by Google
             if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
                 return Response({
@@ -465,7 +455,6 @@ class GoogleAuthView(APIView):
                     'message': 'Invalid token issuer'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # Extract user info from Google token
             google_user_id = idinfo['sub']
             email = idinfo.get('email')
             first_name = idinfo.get('given_name', '')
@@ -473,12 +462,45 @@ class GoogleAuthView(APIView):
             picture = idinfo.get('picture', '')
             email_verified = idinfo.get('email_verified', False)
 
-            if not email:
+        except (ValueError, KeyError, TypeError):
+            # 2. If ID token verification fails, attempt to treat as an Access Token
+            # Fetch user info manually from Google
+            import requests as py_requests
+            try:
+                userinfo_response = py_requests.get(
+                    'https://www.googleapis.com/oauth2/v3/userinfo',
+                    headers={'Authorization': f'Bearer {credential}'},
+                    timeout=10
+                )
+                
+                if userinfo_response.status_code != 200:
+                    return Response({
+                        'success': False,
+                        'message': 'Invalid Google token (neither valid ID token nor valid Access token)'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                user_info = userinfo_response.json()
+                google_user_id = user_info.get('sub')
+                email = user_info.get('email')
+                first_name = user_info.get('given_name', '')
+                last_name = user_info.get('family_name', '')
+                picture = user_info.get('picture', '')
+                email_verified = user_info.get('email_verified', True) # Access tokens from success response are verified
+                
+            except Exception as e:
                 return Response({
                     'success': False,
-                    'message': 'Email not provided by Google'
+                    'message': f'Failed to verify access token: {str(e)}'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
+        if not email:
+            return Response({
+                'success': False,
+                'message': 'Email not provided by Google'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Proceed with user lookup and login
+        try:
             # Check if social account already exists
             try:
                 social_account = SocialAccount.objects.get(
@@ -549,13 +571,6 @@ class GoogleAuthView(APIView):
                     'created': created,
                 }
             }, status=status.HTTP_200_OK)
-
-        except ValueError as e:
-            # Invalid token
-            return Response({
-                'success': False,
-                'message': f'Invalid Google token: {str(e)}'
-            }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
             return Response({
