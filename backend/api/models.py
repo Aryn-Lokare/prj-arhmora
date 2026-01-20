@@ -63,9 +63,6 @@ class Profile(models.Model):
         return f"{self.user.email}'s profile"
 
 
-# ============================================
-# SOCIAL ACCOUNT MODEL
-# ============================================
 
 class SocialAccount(models.Model):
     """Store social login account information"""
@@ -128,8 +125,32 @@ class ScanFinding(models.Model):
     evidence = models.TextField()
     remediation = models.TextField()
 
+    # New fields for enhanced architecture
+    risk_score = models.IntegerField(default=0)  # 0-100 numerical score
+    confidence = models.FloatField(default=0.0)  # AI confidence 0.0-1.0
+    priority_rank = models.IntegerField(null=True, blank=True)  # Remediation priority
+    endpoint_sensitivity = models.CharField(max_length=20, default='public')
+    action_taken = models.CharField(max_length=20, default='flagged')  # block/throttle/allow/flagged
+
     def __str__(self):
-        return f"{self.v_type} ({self.severity}) on {self.affected_url}"
+        return f"{self.v_type} ({self.severity}) on {self.affected_url} [Risk: {self.risk_score}]"
+
+
+class RequestLog(models.Model):
+    """Track requests for behavioral analysis (sliding window)."""
+    source_ip = models.GenericIPAddressField()
+    target_url = models.URLField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    request_hash = models.CharField(max_length=64)  # For pattern detection
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['source_ip', 'timestamp']),
+        ]
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.source_ip} -> {self.target_url} at {self.timestamp}"
 
 
 # Signals
@@ -145,5 +166,3 @@ def create_user_profile(sender, instance, created, **kwargs):
 def save_user_profile(sender, instance, **kwargs):
     if hasattr(instance, 'profile'):
         instance.profile.save()
-
-   

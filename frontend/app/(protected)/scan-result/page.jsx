@@ -152,7 +152,13 @@ function ResultsContent() {
                     isAI: isAI,
                     color: styles.bg,
                     textColor: styles.text,
-                    borderColor: styles.border
+                    borderColor: styles.border,
+                    // Pass enhanced fields to UI
+                    risk_score: finding.risk_score,
+                    confidence: finding.confidence,
+                    action_taken: finding.action_taken,
+                    priority_rank: finding.priority_rank,
+                    endpoint_sensitivity: finding.endpoint_sensitivity
                 }]);
             }, i * 400);
         });
@@ -241,7 +247,60 @@ function ResultsContent() {
                                                     {msg.severity === 'High' && <AlertTriangle className="w-4 h-4 text-red-500" />}
                                                 </div>
                                                 <h3 className="font-bold text-xl mb-2 tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">{msg.title}</h3>
-                                                <div className="flex items-start gap-2 bg-slate-50 p-4 rounded-xl mb-6 mt-4 border border-slate-100/50">
+                                                
+                                                {/* Enhanced Risk Metrics Display */}
+                                                <div className="flex flex-wrap items-center gap-4 mb-4">
+                                                    {msg.risk_score > 0 && (
+                                                        <div className="flex flex-col gap-1 w-full max-w-[200px]">
+                                                            <div className="flex justify-between text-[10px] uppercase font-black tracking-widest text-slate-400">
+                                                                <span>Risk Score</span>
+                                                                <span>{msg.risk_score}/100</span>
+                                                            </div>
+                                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                                <div 
+                                                                    className={cn("h-full rounded-full", 
+                                                                        msg.risk_score > 75 ? "bg-red-500" : 
+                                                                        msg.risk_score > 40 ? "bg-amber-500" : "bg-blue-500"
+                                                                    )} 
+                                                                    style={{ width: `${msg.risk_score}%` }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {msg.confidence > 0 && (
+                                                        <div className="flex flex-col gap-1">
+                                                             <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">AI Confidence</span>
+                                                             <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                                                                {(msg.confidence * 100).toFixed(0)}%
+                                                             </span>
+                                                        </div>
+                                                    )}
+
+                                                    {msg.action_taken && msg.action_taken !== 'flagged' && (
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Auto-Defense</span>
+                                                            <span className={cn(
+                                                                "text-xs font-bold px-2 py-0.5 rounded-md border uppercase",
+                                                                msg.action_taken === 'block' ? "bg-red-50 text-red-600 border-red-100" : 
+                                                                msg.action_taken === 'throttle' ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-slate-50"
+                                                            )}>
+                                                                {msg.action_taken}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {msg.priority_rank && (
+                                                        <div className="ml-auto flex flex-col items-end gap-1">
+                                                            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Fix Priority</span>
+                                                            <span className="text-xs font-bold text-white bg-slate-900 px-2 py-0.5 rounded-md shadow-sm">
+                                                                #{msg.priority_rank}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex items-start gap-2 bg-slate-50 p-4 rounded-xl mb-6 border border-slate-100/50">
                                                     <Info className="w-4 h-4 text-slate-400 mt-0.5" />
                                                     <p className="text-slate-600 text-sm font-medium leading-relaxed italic">&quot;{msg.description}&quot;</p>
                                                 </div>

@@ -148,7 +148,10 @@ class SocialAccountSerializer(serializers.ModelSerializer):
 class ScanFindingSerializer(serializers.ModelSerializer):
     class Meta:
         model = ScanFinding
-        fields = ('id', 'v_type', 'severity', 'affected_url', 'evidence', 'remediation')
+        fields = (
+            'id', 'v_type', 'severity', 'affected_url', 'evidence', 'remediation',
+            'risk_score', 'confidence', 'priority_rank', 'endpoint_sensitivity', 'action_taken'
+        )
 
 
 class ScanHistorySerializer(serializers.ModelSerializer):

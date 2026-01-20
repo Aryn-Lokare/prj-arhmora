@@ -30,7 +30,12 @@ def run_web_scan(self, scan_history_id, target_url):
                 severity=finding['severity'],
                 affected_url=finding['affected_url'],
                 evidence=finding['evidence'],
-                remediation=finding['remediation']
+                remediation=finding['remediation'],
+                risk_score=finding.get('risk_score', 0),
+                confidence=finding.get('confidence', 0.0),
+                priority_rank=finding.get('priority_rank'),
+                endpoint_sensitivity=finding.get('endpoint_sensitivity', 'public'),
+                action_taken=finding.get('action_taken', 'flagged')
             )
 
         # 4. Update scan status

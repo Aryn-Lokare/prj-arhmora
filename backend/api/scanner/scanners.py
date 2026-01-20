@@ -4,6 +4,8 @@ from urllib.parse import urlparse, urljoin
 import socket
 import os
 from .ai_model import AIInference
+from .feature_extractor import FeatureExtractor
+from .fix_prioritizer import FixPrioritizer
 
 logger = logging.getLogger(__name__)
 
@@ -13,17 +15,25 @@ class VulnerabilityScanner:
         self.domain = urlparse(target_url).netloc
         self.findings = []
         
-        # Initialize AI Inference engine
+        # Initialize AI Inference engine and enhanced modules
         model_dir = os.path.dirname(os.path.abspath(__file__))
         self.ai_engine = AIInference(model_dir=model_dir)
+        self.feature_extractor = FeatureExtractor()
+        self.prioritizer = FixPrioritizer()
 
-    def log_finding(self, v_type, url, severity, evidence, remediation):
+    def log_finding(self, v_type, url, severity, evidence, remediation,
+                   risk_score=0, confidence=0.0, action='flagged', priority_rank=None, endpoint_sensitivity='public'):
         self.findings.append({
             'type': v_type,
             'affected_url': url,
             'severity': severity,
             'evidence': evidence,
-            'remediation': remediation
+            'remediation': remediation,
+            'risk_score': risk_score,
+            'confidence': confidence,
+            'action_taken': action,
+            'endpoint_sensitivity': endpoint_sensitivity,
+            # priority_rank will be calculated at the end
         })
 
     def run_scans(self, crawled_data):
@@ -37,6 +47,8 @@ class VulnerabilityScanner:
             self.test_xss(url)
             self.check_ai_anomaly(url)
 
+        # Prioritize findings before returning
+        self.findings = self.prioritizer.rank_findings(self.findings)
         return self.findings
 
     def check_security_headers(self, url):
@@ -60,7 +72,10 @@ class VulnerabilityScanner:
                     url,
                     'Low',
                     f"Missing security headers: {', '.join(missing_headers)}",
-                    "Implement recommended security headers (HSTS, CSP, X-Frame-Options, X-Content-Type-Options)."
+                    "Implement recommended security headers (HSTS, CSP, X-Frame-Options, X-Content-Type-Options).",
+                    risk_score=20,
+                    confidence=1.0,
+                    endpoint_sensitivity='public'
                 )
             
             # Outdated Components / Version Disclosure
@@ -75,7 +90,10 @@ class VulnerabilityScanner:
                     url,
                     'Low',
                     f"Version disclosure in headers: {'; '.join(evidence)}",
-                    "Remove version information from 'Server' and 'X-Powered-By' headers."
+                    "Remove version information from 'Server' and 'X-Powered-By' headers.",
+                    risk_score=15,
+                    confidence=1.0,
+                    endpoint_sensitivity='public'
                 )
 
         except Exception as e:
@@ -88,7 +106,10 @@ class VulnerabilityScanner:
                 url,
                 'Medium',
                 "Site is using unencrypted HTTP protocol.",
-                "Enforce HTTPS and implement HSTS."
+                "Enforce HTTPS and implement HSTS.",
+                risk_score=40,
+                confidence=1.0,
+                endpoint_sensitivity='public'
             )
 
     def test_sql_injection(self, url):
@@ -111,7 +132,11 @@ class VulnerabilityScanner:
                                 url,
                                 'High',
                                 f"Possible error-based SQLi detected with payload: {payload}",
-                                "Use parameterized queries or ORMs to prevent SQL injection."
+                                "Use parameterized queries or ORMs to prevent SQL injection.",
+                                risk_score=90,
+                                confidence=0.95,
+                                action='block',
+                                endpoint_sensitivity=self.feature_extractor.get_endpoint_sensitivity_label(url)
                             )
                             return
                 except:
@@ -132,7 +157,11 @@ class VulnerabilityScanner:
                         url,
                         'Medium',
                         f"Reflected payload found in response: {payload}",
-                        "Sanitize and encode all user-supplied input before rendering it in the browser."
+                        "Sanitize and encode all user-supplied input before rendering it in the browser.",
+                        risk_score=70,
+                        confidence=0.90,
+                        action='block',
+                        endpoint_sensitivity=self.feature_extractor.get_endpoint_sensitivity_label(url)
                     )
             except:
                 pass
@@ -149,23 +178,29 @@ class VulnerabilityScanner:
                         target_url,
                         'High',
                         f"Target URL resolves to internal IP: {ip}",
-                        "Ensure the application does not allow scanning internal network resources."
+                        "Ensure the application does not allow scanning internal network resources.",
+                        risk_score=85,
+                        confidence=1.0,
+                        endpoint_sensitivity=self.feature_extractor.get_endpoint_sensitivity_label(target_url)
                     )
         except Exception as e:
             logger.error(f"SSRF check error: {e}")
+
     def check_ai_anomaly(self, url):
         """Uses AI model to detect suspicious patterns in the URL."""
-        if not self.ai_engine.loaded:
-            return
-
-        malicious_prob = self.ai_engine.predict(url)
-        severity = self.ai_engine.calculate_severity(malicious_prob)
+        # Use the comprehensive analyze_url method
+        result = self.ai_engine.analyze_url(url)
         
-        if severity != "Info":
+        # Log if risk is significant (Medium/High) or Action is Block/Throttle
+        if result['severity'] in ['High', 'Medium'] or result['action'] in ['block', 'throttle']:
             self.log_finding(
                 'AI-Detected Anomaly',
                 url,
-                severity,
-                f"AI model flagged this URL as suspicious (Confidence: {malicious_prob:.2%})",
-                "Review the URL for unusual character distributions or patterns common in injection attacks that might bypass traditional rules."
+                result['severity'],
+                f"AI model flagged this URL as suspicious (Risk: {result['risk_score']}, Confidence: {result['confidence']:.2%})",
+                "Review the URL for unusual character distributions or patterns common in injection attacks that might bypass traditional rules.",
+                risk_score=result['risk_score'],
+                confidence=result['confidence'],
+                action=result['action'],
+                endpoint_sensitivity=result['endpoint_sensitivity']
             )
