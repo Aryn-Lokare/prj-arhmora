@@ -10,7 +10,7 @@ import os
 # Paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', '..', '..'))
-DATA_DIR = r'C:\Users\Aryan\OneDrive\Desktop\data'
+DATA_DIR = os.path.join(ROOT_DIR, 'data')
 TRAIN_PATH = os.path.join(DATA_DIR, 'UNSW_NB15_training-set.csv')
 TEST_PATH = os.path.join(DATA_DIR, 'UNSW_NB15_testing-set.csv')
 
