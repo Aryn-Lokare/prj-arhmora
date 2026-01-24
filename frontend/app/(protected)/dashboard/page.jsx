@@ -6,7 +6,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { PageLoader } from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
 import { DashHeader } from "@/components/layout/dash-header";
-import { Globe, ArrowRight, Clock, Shield, Sparkles } from "lucide-react";
+import { Globe, ArrowRight, Clock, Shield, Sparkles, AlertTriangle, CheckCircle, Activity } from "lucide-react";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -15,10 +15,26 @@ export default function DashboardPage() {
     const router = useRouter();
     const [recentScans, setRecentScans] = useState([]);
     const [loadingScans, setLoadingScans] = useState(true);
+    const [stats, setStats] = useState(null);
+    const [loadingStats, setLoadingStats] = useState(true);
 
     useEffect(() => {
         fetchRecentScans();
+        fetchDashboardStats();
     }, []);
+
+    const fetchDashboardStats = async () => {
+        try {
+            const response = await api.get('/scan/dashboard-stats/');
+            if (response.data.success) {
+                setStats(response.data.data);
+            }
+        } catch (error) {
+            console.error("Error fetching stats:", error);
+        } finally {
+            setLoadingStats(false);
+        }
+    };
 
     const fetchRecentScans = async () => {
         try {
@@ -68,6 +84,144 @@ export default function DashboardPage() {
                             <Globe className="w-4 h-4" />
                             New Scan
                         </Button>
+                    </div>
+
+                    {/* Risk Score & Top Fixes */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                        {/* Risk Score Card */}
+                        <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <Activity className="w-24 h-24 text-blue-600" />
+                            </div>
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6 flex items-center gap-2">
+                                <Shield className="w-3 h-3" /> Security Health
+                            </h3>
+                            
+                            {loadingStats ? (
+                                <div className="h-32 animate-pulse bg-slate-50 rounded-xl" />
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-4">
+                                    <div className="relative w-32 h-32 flex items-center justify-center">
+                                        {/* Background Circle */}
+                                        <svg className="w-full h-full transform -rotate-90">
+                                            <circle
+                                                cx="64"
+                                                cy="64"
+                                                r="56"
+                                                stroke="currentColor"
+                                                strokeWidth="12"
+                                                fill="transparent"
+                                                className="text-slate-100"
+                                            />
+                                            {/* Progress Circle */}
+                                            <circle
+                                                cx="64"
+                                                cy="64"
+                                                r="56"
+                                                stroke="currentColor"
+                                                strokeWidth="12"
+                                                fill="transparent"
+                                                strokeDasharray={351.86}
+                                                strokeDashoffset={351.86 - (351.86 * stats?.risk_score || 0) / 100}
+                                                className={cn(
+                                                    "transition-all duration-1000 ease-out",
+                                                    stats?.risk_score >= 80 ? "text-emerald-500" :
+                                                    stats?.risk_score >= 50 ? "text-amber-500" : "text-red-500"
+                                                )}
+                                                strokeLinecap="round"
+                                            />
+                                        </svg>
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span className={cn(
+                                                "text-4xl font-black tracking-tighter",
+                                                stats?.risk_score >= 80 ? "text-emerald-600" :
+                                                stats?.risk_score >= 50 ? "text-amber-600" : "text-red-600"
+                                            )}>
+                                                {stats?.risk_score || 0}
+                                            </span>
+                                            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Risk Score</span>
+                                        </div>
+                                    </div>
+                                    <p className="mt-4 text-xs font-medium text-slate-500 text-center max-w-[200px]">
+                                        {stats?.risk_score >= 80 ? "Your security posture is strong. Keep updated." :
+                                         stats?.risk_score >= 50 ? "Several vulnerabilities detected. Action recommended." :
+                                         "Critical security risks found. Immediate action required."}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Top Prioritized Fixes */}
+                        <div className="md:col-span-2 bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                                    <Sparkles className="w-3 h-3 text-indigo-500" /> AI-Prioritized Fixes
+                                </h3>
+                                <div className="text-[9px] font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100">
+                                    TOP CRITICAL ACTIONS
+                                </div>
+                            </div>
+
+                            {loadingStats ? (
+                                <div className="space-y-3">
+                                    {[1, 2].map(i => <div key={i} className="h-16 bg-slate-50 rounded-xl animate-pulse" />)}
+                                </div>
+                            ) : stats?.top_fixes?.length > 0 ? (
+                                <div className="flex flex-col gap-3">
+                                    {stats.top_fixes.map((fix, i) => (
+                                        <div key={fix.id} className="flex items-start gap-4 p-4 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all group">
+                                           <div className={cn(
+                                               "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 mt-0.5",
+                                               fix.severity === 'High' ? "bg-red-100 text-red-600" :
+                                               fix.severity === 'Medium' ? "bg-amber-100 text-amber-600" : "bg-blue-100 text-blue-600"
+                                           )}>
+                                               {i + 1}
+                                           </div>
+                                           <div className="flex-1 min-w-0">
+                                               <div className="flex items-center justify-between mb-1">
+                                                   <h4 className="font-bold text-slate-900 text-sm truncate pr-4 group-hover:text-indigo-700 transition-colors">
+                                                       {fix.v_type}
+                                                   </h4>
+                                                   <span className="text-[10px] font-mono text-slate-400 truncate max-w-[120px]">
+                                                       {new URL(fix.affected_url).pathname}
+                                                   </span>
+                                               </div>
+                                               <p className="text-xs text-slate-500 line-clamp-1 mb-2">{fix.remediation_simple || fix.remediation}</p>
+                                               <div className="flex items-center gap-3">
+                                                   <div className="flex items-center gap-1.5">
+                                                       <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                                       <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                                                           Confidence: {(fix.confidence * 100).toFixed(0)}%
+                                                       </span>
+                                                   </div>
+                                                   {fix.endpoint_sensitivity !== 'public' && (
+                                                       <div className="text-[9px] font-bold uppercase tracking-wider text-red-500 bg-red-50 px-1.5 py-0.5 rounded border border-red-100">
+                                                           {fix.endpoint_sensitivity} Asset
+                                                       </div>
+                                                   )}
+                                               </div>
+                                           </div>
+                                           <Button 
+                                                variant="ghost" 
+                                                size="sm"
+                                                className="h-8 w-8 p-0 rounded-full hover:bg-indigo-100 text-slate-400 hover:text-indigo-600"
+                                                onClick={() => router.push(`/scan-result?scanId=${recentScans.find(s => s.status === 'Completed')?.id || ''}#fix-${fix.id}`)} // Fallback linking logic
+                                            >
+                                               <ArrowRight className="w-4 h-4" />
+                                           </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-3 text-emerald-500">
+                                        <CheckCircle className="w-6 h-6" />
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-900">All clear!</p>
+                                    <p className="text-xs text-slate-500">No high priority fixes needed right now.</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Recent Scans Section */}

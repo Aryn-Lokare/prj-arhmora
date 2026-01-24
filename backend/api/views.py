@@ -6,6 +6,10 @@ from .scanner.crawler import Crawler
 from .scanner.scanners import VulnerabilityScanner
 from .scanner.report_builder import ReportBuilder
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 from rest_framework import status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -204,7 +208,7 @@ class ChangePasswordView(APIView):
         try:
             send_password_changed_email(user)
         except Exception as e:
-            print(f"Error sending password changed email: {e}")
+            logger.exception("Error sending password changed email")
 
         return Response({
             'success': True,
@@ -329,9 +333,13 @@ class ForgotPasswordView(APIView):
             reset_token = PasswordResetToken.objects.create(user=user)
 
             try:
-                send_password_reset_email(user, reset_token.token)
+                sent = send_password_reset_email(user, reset_token.token)
+                if sent:
+                    logger.info(f"Password reset email sent to {user.email} (token={reset_token.token})")
+                else:
+                    logger.warning(f"Password reset email not sent to {user.email} (token={reset_token.token}). SMTP may be unavailable.")
             except Exception as e:
-                print(f"Error sending password reset email: {e}")
+                logger.exception("Error sending password reset email")
 
         except User.DoesNotExist:
             pass
@@ -720,4 +728,80 @@ class ScanResultView(generics.RetrieveAPIView):
         return Response({
             'success': True,
             'data': serializer.data
+        })
+
+
+class ScanDashboardStatsView(APIView):
+    """
+    Enhanced Dashboard Statistics Endpoint.
+    Returns:
+    - Repository Risk Score (0-100)
+    - Vulnerability Counts (by severity)
+    - Top Prioritized Fixes (AI-ranked)
+    - Recent Activity Summary
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        # 1. Get latest scan for each unique target (to avoid double counting)
+        # We need a robust way to get "current state".
+        # For simplicity MVP: just take all successful scans from the last 30 days?
+        # Better: Group by target_url and max(timestamp).
+        
+        # Determine unique targets
+        unique_targets = ScanHistory.objects.filter(
+            user=user, 
+            status='Completed'
+        ).values_list('target_url', flat=True).distinct()
+        
+        latest_scans_ids = []
+        for url in unique_targets:
+            latest = ScanHistory.objects.filter(
+                user=user, 
+                target_url=url, 
+                status='Completed'
+            ).order_by('-timestamp').first()
+            if latest:
+                latest_scans_ids.append(latest.id)
+                
+        # 2. Get all findings from these latest scans
+        active_findings = ScanFinding.objects.filter(scan_id__in=latest_scans_ids)
+        
+        # 3. Calculate Repository Risk Score
+        # Start at 100
+        # High: -15, Medium: -5, Low: -1
+        risk_score = 100
+        
+        high_count = active_findings.filter(severity='High').count()
+        medium_count = active_findings.filter(severity='Medium').count()
+        low_count = active_findings.filter(severity='Low').count()
+        
+        risk_deduction = (high_count * 15) + (medium_count * 5) + (low_count * 1)
+        risk_score = max(0, risk_score - risk_deduction)
+        
+        # 4. Get Top Prioritized Fixes
+        # Use priority_rank if available, otherwise fallback to risk_score
+        top_fixes_qs = active_findings.order_by('priority_rank', '-risk_score')[:5]
+        top_fixes = ScanFindingSerializer(top_fixes_qs, many=True).data
+        
+        # 5. Recent Activity (Last 5 scans)
+        recent_scans_qs = ScanHistory.objects.filter(user=user).order_by('-timestamp')[:5]
+        recent_scans = ScanHistorySerializer(recent_scans_qs, many=True).data
+        
+        return Response({
+            'success': True,
+            'data': {
+                'risk_score': risk_score,
+                'counts': {
+                    'High': high_count,
+                    'Medium': medium_count,
+                    'Low': low_count,
+                    'Total': active_findings.count()
+                },
+                'top_fixes': top_fixes,
+                'recent_scans': recent_scans,
+                'active_targets': len(unique_targets)
+            }
         })

@@ -10,6 +10,100 @@ import { Globe, Check, AlertCircle, Activity, Info, AlertTriangle, Sparkles, Ext
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 
+// Actually, defining it in the same file is easier for this edit.
+
+function FindingCard({ msg }) {
+    const [viewMode, setViewMode] = useState('simple');
+
+    return (
+        <div className={cn(
+            "w-full bg-white border p-6 rounded-[28px] shadow-lg shadow-slate-200/20 group hover:shadow-xl hover:-translate-y-1 transition-all duration-300",
+            msg.borderColor
+        )}>
+            <div className="flex items-start gap-5">
+                <div className={cn("mt-1.5 w-3 h-3 rounded-full shrink-0 shadow-sm animate-pulse", msg.color)}></div>
+                <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                            <span className={cn("text-[10px] font-black uppercase tracking-[0.2em]", msg.textColor)}>
+                                {msg.severity} PRIORITY THREAT
+                            </span>
+                            {msg.isAI && (
+                                <div className="flex items-center gap-1 bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100 animate-pulse">
+                                    <Sparkles className="w-2.5 h-2.5" />
+                                    <span className="text-[8px] font-black uppercase tracking-wider">Neural Intelligence</span>
+                                </div>
+                            )}
+                        </div>
+                        {msg.severity === 'High' && <AlertTriangle className="w-4 h-4 text-red-500" />}
+                    </div>
+                    <h3 className="font-bold text-xl mb-2 tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">{msg.title}</h3>
+                    
+                    {/* Risk metrics */}
+                    <div className="flex flex-wrap items-center gap-4 mb-4">
+                        {msg.risk_score > 0 && (
+                            <div className="flex flex-col gap-1 w-full max-w-[140px]">
+                                <div className="flex justify-between text-[10px] uppercase font-black tracking-widest text-slate-400">
+                                    <span>Risk: {msg.risk_score}</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                    <div 
+                                        className={cn("h-full rounded-full", 
+                                            msg.risk_score > 75 ? "bg-red-500" : 
+                                            msg.risk_score > 40 ? "bg-amber-500" : "bg-blue-500"
+                                        )} 
+                                        style={{ width: `${msg.risk_score}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        {msg.confidence > 0 && (
+                            <div className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                                AI CONFIDENCE: {(msg.confidence * 100).toFixed(0)}%
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex items-start gap-2 bg-slate-50 p-4 rounded-xl mb-4 border border-slate-100/50">
+                        <Info className="w-4 h-4 text-slate-400 mt-0.5" />
+                        <p className="text-slate-600 text-sm font-medium leading-relaxed italic">&quot;{msg.description}&quot;</p>
+                    </div>
+
+                    {/* Dual-Tone Toggle */}
+                    <div className="flex items-center gap-1 mb-4 bg-slate-100/50 p-1 rounded-lg w-fit">
+                        <button 
+                          onClick={() => setViewMode('simple')}
+                          className={cn("px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-md transition-all", viewMode === 'simple' ? "bg-white shadow-sm text-slate-900" : "text-slate-400 hover:text-slate-600")}
+                        >
+                            Simple Explanation
+                        </button>
+                        <button 
+                          onClick={() => setViewMode('technical')}
+                          className={cn("px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-md transition-all", viewMode === 'technical' ? "bg-white shadow-sm text-slate-900" : "text-slate-400 hover:text-slate-600")}
+                        >
+                            Technical Fix
+                        </button>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className={cn("p-5 rounded-2xl border transition-colors", viewMode === 'simple' ? "bg-emerald-50/50 border-emerald-100/50" : "bg-slate-50 border-slate-200")}>
+                            <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-2 flex items-center gap-2", viewMode === 'simple' ? "text-emerald-600" : "text-slate-600")}>
+                                {viewMode === 'simple' ? <Check className="w-3.5 h-3.5" /> : <Activity className="w-3.5 h-3.5" />}
+                                {viewMode === 'simple' ? "What does this mean?" : "Implementation Details"}
+                            </p>
+                            <div className={cn("text-sm font-semibold leading-relaxed", viewMode === 'simple' ? "text-emerald-800" : "text-slate-700 font-mono text-[13px]")}>
+                                {viewMode === 'simple' 
+                                    ? (msg.remediation_simple || msg.remediation) 
+                                    : (msg.remediation_technical || msg.remediation)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function ResultsContent() {
     const { logout, loading: authLoading } = useAuth();
     const searchParams = useSearchParams();
@@ -158,7 +252,9 @@ function ResultsContent() {
                     confidence: finding.confidence,
                     action_taken: finding.action_taken,
                     priority_rank: finding.priority_rank,
-                    endpoint_sensitivity: finding.endpoint_sensitivity
+                    endpoint_sensitivity: finding.endpoint_sensitivity,
+                    remediation_simple: finding.remediation_simple,
+                    remediation_technical: finding.remediation_technical
                 }]);
             }, i * 400);
         });
@@ -225,102 +321,7 @@ function ResultsContent() {
                                         </div>
                                     </div>
                                 ) : msg.type === "issue" ? (
-                                    <div className={cn(
-                                        "w-full bg-white border p-6 rounded-[28px] shadow-lg shadow-slate-200/20 group hover:shadow-xl hover:-translate-y-1 transition-all duration-300",
-                                        msg.borderColor
-                                    )}>
-                                        <div className="flex items-start gap-5">
-                                            <div className={cn("mt-1.5 w-3 h-3 rounded-full shrink-0 shadow-sm animate-pulse", msg.color)}></div>
-                                            <div className="flex-1">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={cn("text-[10px] font-black uppercase tracking-[0.2em]", msg.textColor)}>
-                                                            {msg.severity} PRIORITY THREAT
-                                                        </span>
-                                                        {msg.isAI && (
-                                                            <div className="flex items-center gap-1 bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100 animate-pulse">
-                                                                <Sparkles className="w-2.5 h-2.5" />
-                                                                <span className="text-[8px] font-black uppercase tracking-wider">Neural Intelligence</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    {msg.severity === 'High' && <AlertTriangle className="w-4 h-4 text-red-500" />}
-                                                </div>
-                                                <h3 className="font-bold text-xl mb-2 tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">{msg.title}</h3>
-                                                
-                                                {/* Enhanced Risk Metrics Display */}
-                                                <div className="flex flex-wrap items-center gap-4 mb-4">
-                                                    {msg.risk_score > 0 && (
-                                                        <div className="flex flex-col gap-1 w-full max-w-[200px]">
-                                                            <div className="flex justify-between text-[10px] uppercase font-black tracking-widest text-slate-400">
-                                                                <span>Risk Score</span>
-                                                                <span>{msg.risk_score}/100</span>
-                                                            </div>
-                                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                                                <div 
-                                                                    className={cn("h-full rounded-full", 
-                                                                        msg.risk_score > 75 ? "bg-red-500" : 
-                                                                        msg.risk_score > 40 ? "bg-amber-500" : "bg-blue-500"
-                                                                    )} 
-                                                                    style={{ width: `${msg.risk_score}%` }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {msg.confidence > 0 && (
-                                                        <div className="flex flex-col gap-1">
-                                                             <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">AI Confidence</span>
-                                                             <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                                                                {(msg.confidence * 100).toFixed(0)}%
-                                                             </span>
-                                                        </div>
-                                                    )}
-
-                                                    {msg.action_taken && msg.action_taken !== 'flagged' && (
-                                                        <div className="flex flex-col gap-1">
-                                                            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Auto-Defense</span>
-                                                            <span className={cn(
-                                                                "text-xs font-bold px-2 py-0.5 rounded-md border uppercase",
-                                                                msg.action_taken === 'block' ? "bg-red-50 text-red-600 border-red-100" : 
-                                                                msg.action_taken === 'throttle' ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-slate-50"
-                                                            )}>
-                                                                {msg.action_taken}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {msg.priority_rank && (
-                                                        <div className="ml-auto flex flex-col items-end gap-1">
-                                                            <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Fix Priority</span>
-                                                            <span className="text-xs font-bold text-white bg-slate-900 px-2 py-0.5 rounded-md shadow-sm">
-                                                                #{msg.priority_rank}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                <div className="flex items-start gap-2 bg-slate-50 p-4 rounded-xl mb-6 border border-slate-100/50">
-                                                    <Info className="w-4 h-4 text-slate-400 mt-0.5" />
-                                                    <p className="text-slate-600 text-sm font-medium leading-relaxed italic">&quot;{msg.description}&quot;</p>
-                                                </div>
-
-                                                <div className="space-y-3">
-                                                    <div className="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100/50">
-                                                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
-                                                            <Check className="w-3.5 h-3.5" /> Suggested Remediation
-                                                        </p>
-                                                        <p className="text-sm font-semibold text-emerald-800 leading-relaxed">{msg.remediation}</p>
-                                                    </div>
-                                                    <div className="flex items-center justify-end px-2">
-                                                        <button className="text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors flex items-center gap-1.5 group/btn">
-                                                            Comprehensive fixing guide <ExternalLink className="w-3 h-3 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <FindingCard msg={msg} />
                                 ) : msg.type === "error" ? (
                                     <div className="w-full bg-red-50 border border-red-100 p-8 rounded-[32px] flex flex-col items-center gap-6 shadow-sm text-center">
                                         <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 mb-2">

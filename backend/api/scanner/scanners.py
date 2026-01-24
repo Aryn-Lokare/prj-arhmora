@@ -22,13 +22,23 @@ class VulnerabilityScanner:
         self.prioritizer = FixPrioritizer()
 
     def log_finding(self, v_type, url, severity, evidence, remediation,
-                   risk_score=0, confidence=0.0, action='flagged', priority_rank=None, endpoint_sensitivity='public'):
+                   risk_score=0, confidence=0.0, action='flagged', priority_rank=None, endpoint_sensitivity='public',
+                   remediation_simple='', remediation_technical=''):
+        
+        # Fallback if specific dual-tone not provided but single remediation is
+        if not remediation_simple:
+            remediation_simple = remediation
+        if not remediation_technical:
+            remediation_technical = remediation
+
         self.findings.append({
             'type': v_type,
             'affected_url': url,
             'severity': severity,
             'evidence': evidence,
-            'remediation': remediation,
+            'remediation': remediation, # Keep legacy field populated
+            'remediation_simple': remediation_simple,
+            'remediation_technical': remediation_technical,
             'risk_score': risk_score,
             'confidence': confidence,
             'action_taken': action,
@@ -75,7 +85,9 @@ class VulnerabilityScanner:
                     "Implement recommended security headers (HSTS, CSP, X-Frame-Options, X-Content-Type-Options).",
                     risk_score=20,
                     confidence=1.0,
-                    endpoint_sensitivity='public'
+                    endpoint_sensitivity='public',
+                    remediation_simple="Your website is missing improved security instructions (headers) that tell browsers how to protect your users from common attacks.",
+                    remediation_technical=f"Configure the web server to send missing headers: {', '.join(missing_headers)}."
                 )
             
             # Outdated Components / Version Disclosure
@@ -93,7 +105,9 @@ class VulnerabilityScanner:
                     "Remove version information from 'Server' and 'X-Powered-By' headers.",
                     risk_score=15,
                     confidence=1.0,
-                    endpoint_sensitivity='public'
+                    endpoint_sensitivity='public',
+                    remediation_simple="Your server is revealing its exact software version, which helps attackers search for known weaknesses.",
+                    remediation_technical="Disable server tokens/signatures in web server config (e.g., 'ServerTokens Prod' in Apache, 'server_tokens off' in Nginx) and remove 'X-Powered-By' header."
                 )
 
         except Exception as e:
@@ -109,7 +123,9 @@ class VulnerabilityScanner:
                 "Enforce HTTPS and implement HSTS.",
                 risk_score=40,
                 confidence=1.0,
-                endpoint_sensitivity='public'
+                endpoint_sensitivity='public',
+                remediation_simple="Your website connection is not secure (HTTP). Attackers can intercept passwords and data sent by your users.",
+                remediation_technical="Obtain an SSL/TLS certificate and configure 301 redirects from HTTP to HTTPS. Implement HSTS header."
             )
 
     def test_sql_injection(self, url):
@@ -136,7 +152,9 @@ class VulnerabilityScanner:
                                 risk_score=90,
                                 confidence=0.95,
                                 action='block',
-                                endpoint_sensitivity=self.feature_extractor.get_endpoint_sensitivity_label(url)
+                                endpoint_sensitivity=self.feature_extractor.get_endpoint_sensitivity_label(url),
+                                remediation_simple="Attackers could trick your database into revealing secret information by manipulating input fields.",
+                                remediation_technical="Input validation error allowing SQLi. Use parameterized queries (prepared statements) instead of string concatenation for SQL queries."
                             )
                             return
                 except:
@@ -161,7 +179,9 @@ class VulnerabilityScanner:
                         risk_score=70,
                         confidence=0.90,
                         action='block',
-                        endpoint_sensitivity=self.feature_extractor.get_endpoint_sensitivity_label(url)
+                        endpoint_sensitivity=self.feature_extractor.get_endpoint_sensitivity_label(url),
+                        remediation_simple="Attackers could plant malicious scripts on your page to steal user data or perform actions on their behalf.",
+                        remediation_technical="Reflected Cross-Site Scripting (XSS). Output encode all user input using context-appropriate escaping (HTML, JS, URL) before rendering."
                     )
             except:
                 pass
@@ -181,7 +201,9 @@ class VulnerabilityScanner:
                         "Ensure the application does not allow scanning internal network resources.",
                         risk_score=85,
                         confidence=1.0,
-                        endpoint_sensitivity=self.feature_extractor.get_endpoint_sensitivity_label(target_url)
+                        endpoint_sensitivity=self.feature_extractor.get_endpoint_sensitivity_label(target_url),
+                        remediation_simple="Attackers could use your server to access or spy on your internal private network.",
+                        remediation_technical="Server-Side Request Forgery (SSRF). Whitelist permitted domains/IPs. Block access to private IP ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8)."
                     )
         except Exception as e:
             logger.error(f"SSRF check error: {e}")
@@ -202,5 +224,7 @@ class VulnerabilityScanner:
                 risk_score=result['risk_score'],
                 confidence=result['confidence'],
                 action=result['action'],
-                endpoint_sensitivity=result['endpoint_sensitivity']
+                endpoint_sensitivity=result['endpoint_sensitivity'],
+                remediation_simple="Our AI detected suspicious patterns in this URL that look like an automated attack attempt.",
+                remediation_technical="AI Anomaly Detection. Investigate request logs for this URL pattern. Consider rate-limiting or blocking source IP if pattern matches known attack signatures."
             )

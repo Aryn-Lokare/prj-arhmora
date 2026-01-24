@@ -150,6 +150,7 @@ class ScanFindingSerializer(serializers.ModelSerializer):
         model = ScanFinding
         fields = (
             'id', 'v_type', 'severity', 'affected_url', 'evidence', 'remediation',
+            'remediation_simple', 'remediation_technical',
             'risk_score', 'confidence', 'priority_rank', 'endpoint_sensitivity', 'action_taken'
         )
 

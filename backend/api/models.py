@@ -124,6 +124,8 @@ class ScanFinding(models.Model):
     affected_url = models.URLField()
     evidence = models.TextField()
     remediation = models.TextField()
+    remediation_simple = models.TextField(blank=True, default='')
+    remediation_technical = models.TextField(blank=True, default='')
 
     # New fields for enhanced architecture
     risk_score = models.IntegerField(default=0)  # 0-100 numerical score

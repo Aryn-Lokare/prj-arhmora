@@ -21,7 +21,9 @@ from .views import (
     # Scanner
     ScanView,
     ScanHistoryView,
+    ScanHistoryView,
     ScanResultView,
+    ScanDashboardStatsView,
 )
 
 urlpatterns = [
@@ -49,4 +51,5 @@ urlpatterns = [
     path('scan/', ScanView.as_view(), name='scan'),
     path('scan/history/', ScanHistoryView.as_view(), name='scan_history'),
     path('scan/results/<int:pk>/', ScanResultView.as_view(), name='scan_result'),
+    path('scan/dashboard-stats/', ScanDashboardStatsView.as_view(), name='scan_dashboard_stats'),
 ]

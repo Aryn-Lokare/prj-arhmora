@@ -61,7 +61,7 @@ def send_password_reset_email(user, token):
     email.attach_alternative(html_content, "text/html")
     
     # Send email
-    email.send(fail_silently=False)
+    return email.send(fail_silently=False)
 
 
 def send_password_changed_email(user):
