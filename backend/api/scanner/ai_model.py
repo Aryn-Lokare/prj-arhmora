@@ -289,7 +289,70 @@ class AIInference:
             return 'flagged'
         else:
             return 'allow'
-    
+
+    def _validate_context(self, url: str) -> dict:
+        """
+        Context Validation Layer (Pre-AI).
+        
+        Applies generic rules to determine if a URL context is inherently safe.
+        
+        Returns:
+            dict: {
+                'is_safe_context': bool,
+                'reason': str,
+                'max_risk_ceiling': int (optional)
+            }
+        """
+        from urllib.parse import urlparse, parse_qs
+        import math
+        
+        parsed = urlparse(url)
+        path = parsed.path or ''
+        query = parsed.query or ''
+        
+        # Rule 1: Base URL Check (Generic)
+        # If it's just the domain or a simple slash, and no query params
+        if (path in ['', '/']) and not query:
+            return {
+                'is_safe_context': True,
+                'reason': 'Base URL (No Path/Query)',
+                'max_risk_ceiling': 20
+            }
+            
+        # Rule 2: Static Resource Check
+        # Common static extensions that shouldn't be attack vectors typically
+        static_exts = ('.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf')
+        if path.lower().endswith(static_exts) and not query:
+             return {
+                'is_safe_context': True,
+                'reason': 'Static Resource',
+                'max_risk_ceiling': 10
+            }
+
+        # Rule 3: Low Entropy & No Payloads (Heuristic Check)
+        # Calculate entropy
+        def entropy(s):
+            if not s: return 0.0
+            prob = [s.count(c) / len(s) for c in set(s)]
+            return -sum(p * math.log2(p) for p in prob if p > 0)
+            
+        url_entropy = entropy(url)
+        
+        # Check for payload signatures (Simplified version of ConfidenceEngine patterns)
+        # We don't want to duplicate all logic, but a quick check is good.
+        suspicious_chars = set("'\"<>")
+        has_suspicious_chars = any(c in url for c in suspicious_chars)
+        
+        # If entropy is low (looks like standard words) AND no suspicious chars
+        if url_entropy < 3.8 and not has_suspicious_chars and len(query) < 50:
+             return {
+                'is_safe_context': True,
+                'reason': 'Low Entropy & No Suspicious Patters',
+                'max_risk_ceiling': 25
+            }
+            
+        return {'is_safe_context': False, 'reason': 'Complex Context'}
+
     def analyze_url(self, url: str, headers: dict = None) -> dict:
         """
         Comprehensive URL analysis combining feature extraction and prediction.
@@ -308,29 +371,54 @@ class AIInference:
         
         extractor = FeatureExtractor()
         
+        # 1. Context Validation Layer (Pre-AI)
+        context_result = self._validate_context(url)
+        
         # Extract features
         url_features = extractor.extract_url_features(url)
         endpoint_sensitivity = extractor.get_endpoint_sensitivity_label(url)
         
-        # Get prediction (use URL model if available, otherwise use heuristics)
+        # Get raw AI prediction (Anomaly Score)
         if self.url_model_loaded:
-            # Use the CSIC-trained URL model
             result = self._predict_url_attack(url, headers)
         else:
-            # Use heuristic scoring based on URL features
             result = self._heuristic_url_score(url_features)
+            
+        # raw_risk comes from the AI/Heuristic
+        raw_risk = result['risk_score']
+        # Anomaly score is essentially the statistical deviation (raw prob)
+        anomaly_score = result['probability'] * 100
         
-        # Calculate severity and action
-        severity = self.calculate_severity(result['risk_score'], result['confidence'])
-        action = self.get_action(result['risk_score'], result['confidence'])
+        # 2. Risk Ceiling Mechanism
+        # If context is validated as safe, apply risk ceiling
+        if context_result['is_safe_context']:
+            ceiling = context_result.get('max_risk_ceiling', 100)
+            final_risk_score = min(raw_risk, ceiling)
+            
+            # Suppress confidence if we are overriding the AI
+            # If AI said High Risk (e.g. 80) but we cap at 20, confidence in 'Threat' is Low.
+            if raw_risk > ceiling:
+                 threat_confidence = 0.1 # Low confidence in actual threat
+            else:
+                 threat_confidence = result['confidence']
+        else:
+            final_risk_score = raw_risk
+            threat_confidence = result['confidence']
+            
+        # 3. Calculate Severity & Action
+        severity = self.calculate_severity(final_risk_score, threat_confidence)
+        action = self.get_action(final_risk_score, threat_confidence)
         
         return {
-            'probability': result['probability'],
-            'confidence': result['confidence'],
-            'risk_score': result['risk_score'],
+            'probability': result['probability'], # Raw AI probability
+            'anomaly_score': anomaly_score,       # Statistical oddity (0-100)
+            'threat_confidence': threat_confidence, # Likelihood of actual exploit
+            'risk_score': final_risk_score,       # Final Validated Risk
+            'confidence': threat_confidence,      # Backwards compatibility
             'severity': severity,
             'action': action,
             'endpoint_sensitivity': endpoint_sensitivity,
+            'context_validation': context_result  # Debug info
         }
     
     def _predict_url_attack(self, url: str, headers: dict = None) -> dict:

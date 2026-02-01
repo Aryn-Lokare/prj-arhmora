@@ -151,7 +151,13 @@ class ScanFindingSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'v_type', 'severity', 'affected_url', 'evidence', 'remediation',
             'remediation_simple', 'remediation_technical',
-            'risk_score', 'confidence', 'priority_rank', 'endpoint_sensitivity', 'action_taken'
+            # AI-generated explanations
+            'explanation_simple', 'explanation_technical',
+            'risk_score', 'priority_rank', 'endpoint_sensitivity',
+            # Multi-factor confidence fields
+            'pattern_confidence', 'response_confidence', 'exploit_confidence',
+            'context_confidence', 'total_confidence',
+            'validation_status', 'classification',
         )
 
 

@@ -76,14 +76,14 @@ class FixPrioritizer:
         Calculate priority score for a single finding.
         
         Priority Formula:
-        priority = (severity_weight * 3) + (confidence * 2) + (sensitivity * 2) - (effort * 0.5)
+        priority = (severity_weight * 3) + (confidence_normalized * 2) + (sensitivity * 2) - (effort * 0.5)
         
         Higher score = higher priority for remediation.
         
         Args:
             finding: Dictionary containing finding details with keys:
                 - severity: 'High', 'Medium', 'Low', or 'Info'
-                - confidence: float 0.0-1.0 (optional, defaults to 0.5)
+                - total_confidence: int 0-100 (new multi-factor confidence)
                 - endpoint_sensitivity: str (optional, defaults to 'public')
                 - type: vulnerability type string
                 
@@ -91,7 +91,9 @@ class FixPrioritizer:
             Priority score (higher = more urgent)
         """
         severity = finding.get('severity', 'Low')
-        confidence = finding.get('confidence', 0.5)
+        # Support both old confidence (0-1) and new total_confidence (0-100)
+        total_conf = finding.get('total_confidence', 0)
+        confidence = total_conf / 100.0 if total_conf > 0 else finding.get('confidence', 0.5)
         endpoint_type = finding.get('endpoint_sensitivity', 'public')
         v_type = finding.get('type', '')
         

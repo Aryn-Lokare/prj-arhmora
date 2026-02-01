@@ -6,6 +6,8 @@ import os
 from .ai_model import AIInference
 from .feature_extractor import FeatureExtractor
 from .fix_prioritizer import FixPrioritizer
+from .confidence_engine import MultiFactorConfidenceEngine
+from .gemini_explainer import GeminiExplainer
 
 logger = logging.getLogger(__name__)
 
@@ -20,30 +22,90 @@ class VulnerabilityScanner:
         self.ai_engine = AIInference(model_dir=model_dir)
         self.feature_extractor = FeatureExtractor()
         self.prioritizer = FixPrioritizer()
+        self.confidence_engine = MultiFactorConfidenceEngine()
+        self.gemini_explainer = GeminiExplainer()
 
     def log_finding(self, v_type, url, severity, evidence, remediation,
-                   risk_score=0, confidence=0.0, action='flagged', priority_rank=None, endpoint_sensitivity='public',
-                   remediation_simple='', remediation_technical=''):
+                   risk_score=0, endpoint_sensitivity='public',
+                   remediation_simple='', remediation_technical='',
+                   pattern_confidence=0, response_confidence=0, 
+                   exploit_confidence=0, context_confidence=0,
+                   use_ai_explanation=True):
+        """
+        Log a vulnerability finding with multi-factor confidence scoring.
         
-        # Fallback if specific dual-tone not provided but single remediation is
+        Args:
+            use_ai_explanation: If True, generate AI-powered explanations via Gemini.
+                              Falls back to provided/default text if Gemini unavailable.
+        """
+        # Generate AI-powered explanations if enabled
+        explanation_simple = ''
+        explanation_technical = ''
+        
+        if use_ai_explanation and self.gemini_explainer.enabled:
+            try:
+                ai_result = self.gemini_explainer.generate_explanation(
+                    finding_type=v_type,
+                    url=url,
+                    severity=severity,
+                    evidence=evidence,
+                    risk_score=risk_score
+                )
+                
+                # Use AI-generated explanations
+                explanation_simple = ai_result.get('explanation_simple', '')
+                explanation_technical = ai_result.get('explanation_technical', '')
+                
+                # Override remediation with AI-generated if not explicitly provided
+                if not remediation_simple or remediation_simple == remediation:
+                    remediation_simple = ai_result.get('remediation_simple', remediation)
+                if not remediation_technical or remediation_technical == remediation:
+                    remediation_technical = ai_result.get('remediation_technical', remediation)
+                    
+            except Exception as e:
+                logger.warning(f"AI explanation generation failed: {e}. Using fallback.")
+        
+        # Fallback if AI explanation not generated
+        if not explanation_simple:
+            explanation_simple = evidence  # Use evidence as fallback
+        if not explanation_technical:
+            explanation_technical = evidence
         if not remediation_simple:
             remediation_simple = remediation
         if not remediation_technical:
             remediation_technical = remediation
+
+        # Calculate context confidence if not provided
+        if context_confidence == 0:
+            context_confidence = self.confidence_engine.calculate_context_confidence(
+                endpoint_sensitivity, is_authenticated=False, v_type=v_type
+            )
+        
+        # Calculate total confidence and classification
+        total_confidence, classification = self.confidence_engine.calculate_total_confidence(
+            pattern_confidence, response_confidence, exploit_confidence, context_confidence
+        )
 
         self.findings.append({
             'type': v_type,
             'affected_url': url,
             'severity': severity,
             'evidence': evidence,
-            'remediation': remediation, # Keep legacy field populated
+            # AI-generated explanations (non-technical and technical)
+            'explanation_simple': explanation_simple,
+            'explanation_technical': explanation_technical,
+            'remediation': remediation,
             'remediation_simple': remediation_simple,
             'remediation_technical': remediation_technical,
             'risk_score': risk_score,
-            'confidence': confidence,
-            'action_taken': action,
             'endpoint_sensitivity': endpoint_sensitivity,
-            # priority_rank will be calculated at the end
+            # Multi-factor confidence
+            'pattern_confidence': pattern_confidence,
+            'response_confidence': response_confidence,
+            'exploit_confidence': exploit_confidence,
+            'context_confidence': context_confidence,
+            'total_confidence': total_confidence,
+            'classification': classification,
         })
 
     def run_scans(self, crawled_data):
@@ -84,10 +146,11 @@ class VulnerabilityScanner:
                     f"Missing security headers: {', '.join(missing_headers)}",
                     "Implement recommended security headers (HSTS, CSP, X-Frame-Options, X-Content-Type-Options).",
                     risk_score=20,
-                    confidence=1.0,
                     endpoint_sensitivity='public',
                     remediation_simple="Your website is missing improved security instructions (headers) that tell browsers how to protect your users from common attacks.",
-                    remediation_technical=f"Configure the web server to send missing headers: {', '.join(missing_headers)}."
+                    remediation_technical=f"Configure the web server to send missing headers: {', '.join(missing_headers)}.",
+                    pattern_confidence=25,  # Clear pattern match
+                    response_confidence=0   # No response manipulation needed
                 )
             
             # Outdated Components / Version Disclosure
@@ -104,10 +167,10 @@ class VulnerabilityScanner:
                     f"Version disclosure in headers: {'; '.join(evidence)}",
                     "Remove version information from 'Server' and 'X-Powered-By' headers.",
                     risk_score=15,
-                    confidence=1.0,
                     endpoint_sensitivity='public',
                     remediation_simple="Your server is revealing its exact software version, which helps attackers search for known weaknesses.",
-                    remediation_technical="Disable server tokens/signatures in web server config (e.g., 'ServerTokens Prod' in Apache, 'server_tokens off' in Nginx) and remove 'X-Powered-By' header."
+                    remediation_technical="Disable server tokens/signatures in web server config (e.g., 'ServerTokens Prod' in Apache, 'server_tokens off' in Nginx) and remove 'X-Powered-By' header.",
+                    pattern_confidence=20
                 )
 
         except Exception as e:
@@ -122,10 +185,10 @@ class VulnerabilityScanner:
                 "Site is using unencrypted HTTP protocol.",
                 "Enforce HTTPS and implement HSTS.",
                 risk_score=40,
-                confidence=1.0,
                 endpoint_sensitivity='public',
                 remediation_simple="Your website connection is not secure (HTTP). Attackers can intercept passwords and data sent by your users.",
-                remediation_technical="Obtain an SSL/TLS certificate and configure 301 redirects from HTTP to HTTPS. Implement HSTS header."
+                remediation_technical="Obtain an SSL/TLS certificate and configure 301 redirects from HTTP to HTTPS. Implement HSTS header.",
+                pattern_confidence=30  # Definitive pattern
             )
 
     def test_sql_injection(self, url):
@@ -150,11 +213,11 @@ class VulnerabilityScanner:
                                 f"Possible error-based SQLi detected with payload: {payload}",
                                 "Use parameterized queries or ORMs to prevent SQL injection.",
                                 risk_score=90,
-                                confidence=0.95,
-                                action='block',
                                 endpoint_sensitivity=self.feature_extractor.get_endpoint_sensitivity_label(url),
                                 remediation_simple="Attackers could trick your database into revealing secret information by manipulating input fields.",
-                                remediation_technical="Input validation error allowing SQLi. Use parameterized queries (prepared statements) instead of string concatenation for SQL queries."
+                                remediation_technical="Input validation error allowing SQLi. Use parameterized queries (prepared statements) instead of string concatenation for SQL queries.",
+                                pattern_confidence=25,   # SQL pattern detected
+                                response_confidence=30,  # SQL error in response
                             )
                             return
                 except:
@@ -177,11 +240,11 @@ class VulnerabilityScanner:
                         f"Reflected payload found in response: {payload}",
                         "Sanitize and encode all user-supplied input before rendering it in the browser.",
                         risk_score=70,
-                        confidence=0.90,
-                        action='block',
                         endpoint_sensitivity=self.feature_extractor.get_endpoint_sensitivity_label(url),
                         remediation_simple="Attackers could plant malicious scripts on your page to steal user data or perform actions on their behalf.",
-                        remediation_technical="Reflected Cross-Site Scripting (XSS). Output encode all user input using context-appropriate escaping (HTML, JS, URL) before rendering."
+                        remediation_technical="Reflected Cross-Site Scripting (XSS). Output encode all user input using context-appropriate escaping (HTML, JS, URL) before rendering.",
+                        pattern_confidence=20,   # XSS pattern
+                        response_confidence=25,  # Payload reflected in response
                     )
             except:
                 pass
@@ -200,10 +263,10 @@ class VulnerabilityScanner:
                         f"Target URL resolves to internal IP: {ip}",
                         "Ensure the application does not allow scanning internal network resources.",
                         risk_score=85,
-                        confidence=1.0,
                         endpoint_sensitivity=self.feature_extractor.get_endpoint_sensitivity_label(target_url),
                         remediation_simple="Attackers could use your server to access or spy on your internal private network.",
-                        remediation_technical="Server-Side Request Forgery (SSRF). Whitelist permitted domains/IPs. Block access to private IP ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8)."
+                        remediation_technical="Server-Side Request Forgery (SSRF). Whitelist permitted domains/IPs. Block access to private IP ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8).",
+                        pattern_confidence=30  # Internal IP confirmed
                     )
         except Exception as e:
             logger.error(f"SSRF check error: {e}")
@@ -214,17 +277,31 @@ class VulnerabilityScanner:
         result = self.ai_engine.analyze_url(url)
         
         # Log if risk is significant (Medium/High) or Action is Block/Throttle
+        # With the new risk ceiling, safe contexts (risk <= 20) will naturally be skipped here.
         if result['severity'] in ['High', 'Medium'] or result['action'] in ['block', 'throttle']:
+            # Convert AI confidence (0-1) to pattern confidence (0-30)
+            # Use threat_confidence if available, else fallback
+            threat_conf = result.get('threat_confidence', result['confidence'])
+            ai_pattern_conf = int(threat_conf * 30)
+            
+            # Context-aware messaging
+            anomaly_score = result.get('anomaly_score', 0)
+            if threat_conf > 0.8:
+                msg = f"AI model detected a high-confidence attack pattern (Anomaly: {anomaly_score:.1f}, Confidence: {threat_conf:.2%})"
+                simple_msg = "Our AI detected a pattern that strongly resembles a known cyber attack."
+            else:
+                msg = f"AI detected unusual characteristics, but no confirmed attack pattern was found (Anomaly: {anomaly_score:.1f})"
+                simple_msg = "Our AI found this URL looks unusual, but we haven't confirmed it's an attack. It might be a false alarm or a new type of probe."
+
             self.log_finding(
                 'AI-Detected Anomaly',
                 url,
                 result['severity'],
-                f"AI model flagged this URL as suspicious (Risk: {result['risk_score']}, Confidence: {result['confidence']:.2%})",
+                msg,
                 "Review the URL for unusual character distributions or patterns common in injection attacks that might bypass traditional rules.",
                 risk_score=result['risk_score'],
-                confidence=result['confidence'],
-                action=result['action'],
                 endpoint_sensitivity=result['endpoint_sensitivity'],
-                remediation_simple="Our AI detected suspicious patterns in this URL that look like an automated attack attempt.",
-                remediation_technical="AI Anomaly Detection. Investigate request logs for this URL pattern. Consider rate-limiting or blocking source IP if pattern matches known attack signatures."
+                remediation_simple=simple_msg,
+                remediation_technical="AI Anomaly Detection. Investigate request logs for this URL pattern. Consider rate-limiting or blocking source IP if pattern matches known attack signatures.",
+                pattern_confidence=ai_pattern_conf
             )

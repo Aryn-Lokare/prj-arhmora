@@ -126,16 +126,51 @@ class ScanFinding(models.Model):
     remediation = models.TextField()
     remediation_simple = models.TextField(blank=True, default='')
     remediation_technical = models.TextField(blank=True, default='')
+    
+    # AI-Generated Explanations (non-technical and technical)
+    explanation_simple = models.TextField(blank=True, default='')  # For non-technical users
+    explanation_technical = models.TextField(blank=True, default='')  # For technical users
 
-    # New fields for enhanced architecture
+    # Risk & Priority
     risk_score = models.IntegerField(default=0)  # 0-100 numerical score
-    confidence = models.FloatField(default=0.0)  # AI confidence 0.0-1.0
     priority_rank = models.IntegerField(null=True, blank=True)  # Remediation priority
     endpoint_sensitivity = models.CharField(max_length=20, default='public')
-    action_taken = models.CharField(max_length=20, default='flagged')  # block/throttle/allow/flagged
+    
+    # Multi-Factor Confidence Scoring (integers 0-100 for clarity)
+    pattern_confidence = models.IntegerField(default=0)   # 0-30: Pattern/signature detection
+    response_confidence = models.IntegerField(default=0)  # 0-30: Response anomaly detection
+    exploit_confidence = models.IntegerField(default=0)   # 0-30: Exploit confirmation
+    context_confidence = models.IntegerField(default=0)   # 0-10: Context/sensitivity adjustment
+    total_confidence = models.IntegerField(default=0)     # Sum, capped at 100
+    
+    # Validation Status (repurposed from action_taken)
+    VALIDATION_CHOICES = [
+        ('pending', 'Pending'),
+        ('validated', 'Validated'),
+        ('partial', 'Partially Validated'),
+        ('failed', 'Not Validated'),
+    ]
+    validation_status = models.CharField(
+        max_length=20, 
+        choices=VALIDATION_CHOICES, 
+        default='pending'
+    )
+    
+    # Classification Label
+    CLASSIFICATION_CHOICES = [
+        ('confirmed', 'Confirmed Vulnerability'),
+        ('likely', 'Likely Vulnerability'),
+        ('suspicious', 'Suspicious Pattern'),
+        ('informational', 'Informational'),
+    ]
+    classification = models.CharField(
+        max_length=20, 
+        choices=CLASSIFICATION_CHOICES, 
+        default='suspicious'
+    )
 
     def __str__(self):
-        return f"{self.v_type} ({self.severity}) on {self.affected_url} [Risk: {self.risk_score}]"
+        return f"{self.v_type} ({self.severity}) on {self.affected_url} [Confidence: {self.total_confidence}%]"
 
 
 class RequestLog(models.Model):
@@ -153,6 +188,39 @@ class RequestLog(models.Model):
 
     def __str__(self):
         return f"{self.source_ip} -> {self.target_url} at {self.timestamp}"
+
+
+class ScannerMetrics(models.Model):
+    """Track precision/recall metrics for scanner performance evaluation."""
+    scan = models.OneToOneField(ScanHistory, on_delete=models.CASCADE, related_name='metrics')
+    
+    # Confusion matrix counts
+    true_positives = models.IntegerField(default=0)
+    false_positives = models.IntegerField(default=0)
+    false_negatives = models.IntegerField(default=0)
+    
+    # Calculated metrics
+    precision = models.FloatField(default=0.0)  # TP / (TP + FP)
+    recall = models.FloatField(default=0.0)     # TP / (TP + FN)
+    f1_score = models.FloatField(default=0.0)   # Harmonic mean
+    
+    # Benchmark info
+    benchmark_source = models.CharField(max_length=100, blank=True, default='')
+    evaluated_at = models.DateTimeField(auto_now=True)
+    
+    def calculate_metrics(self):
+        """Recalculate precision, recall, and F1 score."""
+        tp, fp, fn = self.true_positives, self.false_positives, self.false_negatives
+        self.precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        self.recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        if self.precision + self.recall > 0:
+            self.f1_score = 2 * (self.precision * self.recall) / (self.precision + self.recall)
+        else:
+            self.f1_score = 0.0
+        self.save()
+    
+    def __str__(self):
+        return f"Metrics for Scan {self.scan_id}: P={self.precision:.2f}, R={self.recall:.2f}"
 
 
 # Signals
