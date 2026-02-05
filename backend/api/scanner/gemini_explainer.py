@@ -91,40 +91,35 @@ class GeminiExplainer:
     ) -> dict:
         """Cached version of explanation generation."""
         
-        prompt = f"""You are a cybersecurity expert providing accurate vulnerability explanations.
+        prompt = f"""You are a cybersecurity expert providing precise, evidence-based vulnerability analysis.
 
-VULNERABILITY DETAILS:
+VULNERABILITY CONTEXT:
 - Type: {finding_type}
 - Severity: {severity}
 - Risk Score: {risk_score}/100
-- Evidence Found: {evidence}
-- Affected URL: {url}
+- URL: {url}
+- Evidence: {evidence}
 
-Generate explanations for this security finding. Be ACCURATE and DO NOT MISLEAD the user.
-- If the finding is uncertain, clearly state it might be a false positive
-- Do not exaggerate the risk or create unnecessary alarm
-- Base your explanation strictly on the evidence provided
+INSTRUCTIONS:
+1. Be PRECISE and CONCISE. Avoid generic boilerplate.
+2. Direct your explanation to the *specific evidence* provided above.
+3. If the evidence shows a payload (e.g., `' OR 1=1`), explain why *that specific payload* is dangerous.
+4. If the evidence is a list of endpoints, summarize the common pattern.
+5. Max 3 sentences per section.
 
-Provide your response in EXACTLY this format (use these exact headers):
+FORMAT (Strictly follow headers):
 
 NON_TECHNICAL_EXPLANATION:
-[Write 2-3 sentences explaining what this vulnerability means in plain English. 
-Avoid technical jargon. Explain what could happen if exploited, in terms a business owner would understand.
-Be honest about the certainty level.]
+[Explain the impact in plain English. Focus on business risk (data loss, downtime). Be direct.]
 
 TECHNICAL_EXPLANATION:
-[Write 2-3 sentences with technical details about the vulnerability.
-Include relevant technical terms, attack vectors, and potential impact.
-Reference the specific evidence found.]
+[Explain the specific attack vector based on the evidence. Mention the payload/pattern/header involved. Use precise terminology.]
 
 NON_TECHNICAL_REMEDIATION:
-[Write 2-3 sentences explaining how to fix this in simple terms.
-Focus on what needs to happen, not how to implement it technically.]
+[What needs to be fixed? (e.g., "Sanitize input" or "Update configuration"). Keep it high-level.]
 
 TECHNICAL_REMEDIATION:
-[Write detailed technical fix instructions.
-Include specific configurations, code changes, or security controls needed.
-Reference industry best practices or standards where applicable.]
+[Specific implementation details. Mention the exact headers, functions, or coding patterns to use (e.g., "Use PreparedStatement", "Set SameSite=Strict").]
 """
 
         response = self.client.models.generate_content(

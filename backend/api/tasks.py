@@ -20,43 +20,75 @@ def run_web_scan(self, scan_history_id, target_url):
 
         # 2. Initialize and run Vulnerability Scanner
         scanner = VulnerabilityScanner(target_url)
-        findings = scanner.run_scans(crawled_data)
+        raw_findings = scanner.run_scans(crawled_data)
+        
+        # 3. Deduplicate findings
+        from .scanner.deduplication import deduplicate_findings
+        deduplicated_result = deduplicate_findings(
+            raw_findings, 
+            crawled_data.get('visited_urls', [])
+        )
+        
+        vulnerabilities = deduplicated_result['vulnerabilities']
+        summary = deduplicated_result['scan_summary']
+        logger.info(f"Scan summary: {summary}")
 
-        # 3. Save findings to database with multi-factor confidence
+        # 4. Save DEDUPLICATED findings to database
         created_finding_ids = []
-        for finding in findings:
+        for vuln in vulnerabilities:
+            # Construct rich evidence string with all affected endpoints
+            evidence_summary = [
+                f"### Root Cause\n{vuln['root_cause']}\n",
+                f"### Affected Endpoints ({vuln['occurrences']})",
+                *[f"- {ep}" for ep in vuln['affected_endpoints'][:10]],
+            ]
+            if len(vuln['affected_endpoints']) > 10:
+                evidence_summary.append(f"... and {len(vuln['affected_endpoints']) - 10} more")
+            
+            # Add primary evidence details
+            if vuln['evidence']:
+                primary = vuln['evidence'][0]
+                evidence_summary.extend([
+                    f"\n### Evidence (Primary: {primary['endpoint']})",
+                    f"Payload: `{primary['payload']}`",
+                    f"Response: `{primary.get('response', '')[:200]}`"
+                ])
+                
+            full_evidence = "\n".join(evidence_summary)
+
+            # Use primary endpoint for the record
+            primary_endpoint = vuln['evidence'][0]['full_url'] if vuln['evidence'] else target_url
+
             scan_finding = ScanFinding.objects.create(
                 scan=scan_history,
-                v_type=finding['type'],
-                severity=finding['severity'],
-                affected_url=finding['affected_url'],
-                evidence=finding['evidence'],
-                remediation=finding['remediation'],
-                remediation_simple=finding.get('remediation_simple', ''),
-                remediation_technical=finding.get('remediation_technical', ''),
-                risk_score=finding.get('risk_score', 0),
-                priority_rank=finding.get('priority_rank'),
-                endpoint_sensitivity=finding.get('endpoint_sensitivity', 'public'),
-                # Multi-factor confidence
-                pattern_confidence=finding.get('pattern_confidence', 0),
-                response_confidence=finding.get('response_confidence', 0),
-                exploit_confidence=finding.get('exploit_confidence', 0),
-                context_confidence=finding.get('context_confidence', 0),
-                total_confidence=finding.get('total_confidence', 0),
-                classification=finding.get('classification', 'suspicious'),
+                v_type=vuln['type'],
+                severity=vuln['severity'],
+                affected_url=primary_endpoint,
+                evidence=full_evidence,
+                remediation=vuln['remediation'],
+                remediation_simple=vuln.get('remediation_simple', ''),
+                remediation_technical=vuln.get('remediation_technical', ''),
+                risk_score=vuln.get('risk', 0),
+                priority_rank=0, # Calculated later if needed
+                endpoint_sensitivity='public', # Default/Assumed
+                # Store max info
+                total_confidence=int(vuln['confidence']),
+                classification='likely', # Default for AI/Rule matches
                 validation_status='pending',
+                detection_method=vuln['detection_method'],
+                # Store structured data if JSON field available, else relying on text evidence
             )
             created_finding_ids.append(scan_finding.id)
 
-        # 4. Trigger async validation for each finding
+        # 5. Trigger async validation for each deduplicated finding
         for finding_id in created_finding_ids:
             validate_finding.delay(finding_id)
 
-        # 5. Update scan status
+        # 6. Update scan status
         scan_history.status = 'Completed'
         scan_history.save()
         
-        return f"Scan {scan_history_id} completed with {len(findings)} findings"
+        return f"Scan {scan_history_id} completed: {len(vulnerabilities)} unique vulnerabilities (from {len(raw_findings)} raw findings)"
 
     except Exception as e:
         logger.error(f"Async scan failed: {str(e)}")

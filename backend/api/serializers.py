@@ -158,6 +158,8 @@ class ScanFindingSerializer(serializers.ModelSerializer):
             'pattern_confidence', 'response_confidence', 'exploit_confidence',
             'context_confidence', 'total_confidence',
             'validation_status', 'classification',
+            # AI ML Classification (New)
+            'ai_classification', 'ai_confidence', 'detection_method', 'class_probabilities',
         )
 
 

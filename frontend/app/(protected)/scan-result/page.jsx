@@ -90,22 +90,36 @@ function FindingCard({ msg }) {
               >
                 {validation.text}
               </span>
-              {msg.isAI && (
-                <div className="flex items-center gap-1 bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100">
+              {msg.detection_method === "ai" || msg.isAI ? (
+                <div className="flex items-center gap-1 bg-violet-50 text-violet-600 px-2 py-0.5 rounded-full border border-violet-100">
                   <Sparkles className="w-2.5 h-2.5" />
                   <span className="text-[8px] font-black uppercase tracking-wider">
-                    AI
+                    AI DETECTED
                   </span>
                 </div>
-              )}
+              ) : msg.detection_method === "hybrid" ? (
+                <div className="flex items-center gap-1 bg-cyan-50 text-cyan-600 px-2 py-0.5 rounded-full border border-cyan-100">
+                  <Activity className="w-2.5 h-2.5" />
+                  <span className="text-[8px] font-black uppercase tracking-wider">
+                    HYBRID
+                  </span>
+                </div>
+              ) : null}
             </div>
             {msg.severity === "High" && (
               <AlertTriangle className="w-4 h-4 text-red-500" />
             )}
           </div>
-          <h3 className="font-bold text-xl mb-2 tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
-            {msg.title}
+          <h3 className="font-bold text-xl mb-1 tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
+            {msg.ai_classification || msg.title}
           </h3>
+          {(msg.ai_confidence > 0 || msg.total_confidence > 0) && (
+            <div className="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-wide">
+              {msg.ai_confidence > 0
+                ? `AI Confidence: ${(msg.ai_confidence * 100).toFixed(0)}%`
+                : `Confidence: ${msg.total_confidence}%`}
+            </div>
+          )}
 
           {/* Multi-factor confidence breakdown */}
           {(msg.total_confidence > 0 || msg.pattern_confidence > 0) && (
@@ -162,11 +176,33 @@ function FindingCard({ msg }) {
             )}
           </div>
 
-          <div className="flex items-start gap-2 bg-slate-50 p-4 rounded-xl mb-4 border border-slate-100/50">
-            <Info className="w-4 h-4 text-slate-400 mt-0.5" />
-            <p className="text-slate-600 text-sm font-medium leading-relaxed italic">
-              &quot;{msg.description}&quot;
-            </p>
+          {/* Evidence / Description Section */}
+          <div className="bg-slate-50 p-4 rounded-xl mb-4 border border-slate-100/50">
+            {msg.description && msg.description.includes("###") ? (
+              <div className="text-sm text-slate-600 whitespace-pre-wrap font-medium leading-relaxed">
+                {msg.description.split("###").map((section, idx) => {
+                  if (!section.trim()) return null;
+                  const [title, ...content] = section.split("\n");
+                  return (
+                    <div key={idx} className="mb-3 last:mb-0">
+                      <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                        {title.trim()}
+                      </h4>
+                      <div className="pl-0 text-slate-700">
+                        {content.join("\n").trim()}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
+                <p className="text-slate-600 text-sm font-medium leading-relaxed italic">
+                  &quot;{msg.description}&quot;
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Dual-Tone Toggle */}
@@ -439,6 +475,10 @@ function ResultsContent() {
             total_confidence: finding.total_confidence || 0,
             validation_status: finding.validation_status || "pending",
             classification: finding.classification || "suspicious",
+            // AI ML fields
+            ai_classification: finding.ai_classification,
+            ai_confidence: finding.ai_confidence,
+            detection_method: finding.detection_method,
             // Remediation
             remediation_simple: finding.remediation_simple,
             remediation_technical: finding.remediation_technical,

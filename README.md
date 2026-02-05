@@ -15,6 +15,7 @@ A production-ready authentication system built with Django REST Framework and Ne
 ## 🛠️ Tech Stack
 
 ### Backend
+
 - Django 6.0
 - Django REST Framework 3.16.1
 - PostgreSQL
@@ -23,6 +24,7 @@ A production-ready authentication system built with Django REST Framework and Ne
 - Python Decouple
 
 ### Frontend
+
 - Next.js 16.1 (App Router)
 - TypeScript
 - React 19
@@ -60,16 +62,19 @@ python -m venv venv
 #### 2.2 Activate Virtual Environment
 
 **Windows (PowerShell):**
+
 ```powershell
 venv\Scripts\activate
 ```
 
 **Windows (Command Prompt):**
+
 ```cmd
 venv\Scripts\activate.bat
 ```
 
 **macOS/Linux:**
+
 ```bash
 source venv/bin/activate
 ```
@@ -133,6 +138,7 @@ CELERY_RESULT_BACKEND=redis://localhost:6379/0
 ```
 
 **Important Notes:**
+
 - Replace `your_postgres_password` with your actual PostgreSQL password
 - For email functionality, use Gmail App Password (not your regular password)
 - For development, you can use `console.EmailBackend` to print emails to console
@@ -145,6 +151,7 @@ python manage.py migrate
 ```
 
 You should see output like:
+
 ```
 Running migrations:
   Applying contenttypes.0001_initial... OK
@@ -169,6 +176,99 @@ python manage.py runserver
 ✅ Backend should now be running at: **http://localhost:8000**
 
 Test it by visiting: http://localhost:8000/admin
+
+### Step 2.9: Celery & Redis Setup (For Background Scans)
+
+Celery handles background tasks like vulnerability scanning. Redis acts as the message broker.
+
+#### 2.9.1 Install Redis
+
+**Windows:**
+
+1. Download Redis from [Microsoft Archive](https://github.com/microsoftarchive/redis/releases)
+2. Extract and run `redis-server.exe`
+3. Or use WSL2: `sudo apt install redis-server && sudo service redis-server start`
+
+**macOS:**
+
+```bash
+brew install redis
+brew services start redis
+```
+
+**Linux (Ubuntu/Debian):**
+
+```bash
+sudo apt update
+sudo apt install redis-server
+sudo systemctl start redis-server
+sudo systemctl enable redis-server
+```
+
+**Docker (All platforms):**
+
+```bash
+docker run -d -p 6379:6379 --name redis redis:alpine
+```
+
+#### 2.9.2 Verify Redis is Running
+
+```bash
+redis-cli ping
+# Should return: PONG
+```
+
+#### 2.9.3 Configure Celery Environment
+
+Ensure your `backend/.env` has these lines:
+
+```env
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+```
+
+#### 2.9.4 Start Celery Worker
+
+Open a **new terminal** (keep Django server running), activate the virtual environment, and run:
+
+**Windows:**
+
+```powershell
+cd backend
+venv\Scripts\activate
+celery -A myproject worker --loglevel=info --pool=solo
+```
+
+**macOS/Linux:**
+
+```bash
+cd backend
+source venv/bin/activate
+celery -A myproject worker --loglevel=info
+```
+
+You should see output like:
+
+```
+ -------------- celery@your-computer v5.x.x
+---- **** -----
+--- * ***  * -- [config]
+-- * - **** --- .> app:         myproject:0x...
+- ** ---------- .> transport:   redis://localhost:6379/0
+- ** ---------- .> results:     redis://localhost:6379/0
+- *** --- * --- .> concurrency: 8 (prefork)
+-- ******* ----
+--- ***** ----- [queues]
+ -------------- .> celery       exchange=celery(direct) key=celery
+
+[tasks]
+  . api.tasks.run_web_scan
+  . api.tasks.validate_finding
+
+[... ready.]
+```
+
+✅ Celery worker is now ready to process background scans!
 
 ### Step 3: Frontend Setup
 
@@ -218,6 +318,7 @@ npm run dev
 ## 🎉 You're Ready!
 
 Open your browser and navigate to:
+
 - **Frontend:** http://localhost:3000
 - **Backend API:** http://localhost:8000/api
 - **Admin Panel:** http://localhost:8000/admin
@@ -225,12 +326,14 @@ Open your browser and navigate to:
 ## 🧪 Testing the Application
 
 ### Test Registration
+
 1. Go to http://localhost:3000
 2. Click "Sign Up"
 3. Fill in the registration form
 4. Check your terminal (if using console email backend) for the verification email
 
 ### Test Login
+
 1. Go to http://localhost:3000
 2. Click "Login"
 3. Enter your credentials
@@ -239,31 +342,83 @@ Open your browser and navigate to:
 ## ⚠️ Common Issues & Solutions
 
 ### Issue: "ModuleNotFoundError: No module named 'psycopg2'"
+
 **Solution:**
+
 ```bash
 pip install psycopg2-binary
 ```
 
 ### Issue: "FATAL: password authentication failed for user postgres"
+
 **Solution:**
+
 - Check your PostgreSQL password in the `.env` file
 - Ensure PostgreSQL is running: `pg_ctl status`
 - Reset password if needed using pgAdmin
 
 ### Issue: "FATAL: database 'arhmora_db' does not exist"
+
 **Solution:**
+
 ```sql
 CREATE DATABASE arhmora_db;
 ```
 
 ### Issue: Frontend shows "Network Error" or "Cannot connect to API"
+
 **Solution:**
+
 - Ensure backend is running on port 8000
 - Check `NEXT_PUBLIC_API_URL` in `frontend/.env.local`
 - Verify CORS settings in `backend/myproject/settings.py`
 
-### Issue: "Port 3000 is already in use"
+### Issue: "Error: redis.exceptions.ConnectionError"
+
 **Solution:**
+
+- Ensure Redis is running: `redis-cli ping` should return `PONG`
+- Windows: Run `redis-server.exe` or start Docker container
+- macOS: `brew services start redis`
+- Linux: `sudo systemctl start redis-server`
+
+### Issue: Celery worker not receiving tasks / Scans not running
+
+**Solution:**
+
+1. Verify Redis connection:
+
+   ```bash
+   redis-cli ping
+   ```
+
+2. Check Celery is running with correct app:
+
+   ```bash
+   celery -A myproject worker --loglevel=info --pool=solo  # Windows
+   celery -A myproject worker --loglevel=info              # macOS/Linux
+   ```
+
+3. Verify environment variables in `backend/.env`:
+   ```env
+   CELERY_BROKER_URL=redis://localhost:6379/0
+   CELERY_RESULT_BACKEND=redis://localhost:6379/0
+   ```
+
+### Issue: "Celery received unregistered task" error
+
+**Solution:**
+
+```bash
+# Restart Celery worker after code changes
+# Press Ctrl+C to stop, then restart with:
+celery -A myproject worker --loglevel=info
+```
+
+### Issue: "Port 3000 is already in use"
+
+**Solution:**
+
 ```bash
 # Kill process on port 3000
 # Windows:
@@ -275,7 +430,9 @@ lsof -ti:3000 | xargs kill -9
 ```
 
 ### Issue: "Port 8000 is already in use"
+
 **Solution:**
+
 ```bash
 # Windows:
 netstat -ano | findstr :8000
@@ -330,6 +487,7 @@ prj-arhmora/
 ## 🔑 API Endpoints
 
 ### Authentication
+
 - `POST /api/auth/register/` - Register new user
 - `POST /api/auth/login/` - Login
 - `POST /api/auth/logout/` - Logout
@@ -337,57 +495,65 @@ prj-arhmora/
 - `POST /api/auth/google/` - Google OAuth login
 
 ### User Management
+
 - `GET /api/auth/user/` - Get current user
 - `PATCH /api/auth/user/` - Update user profile
 - `POST /api/auth/change-password/` - Change password
 
 ### Email Verification
+
 - `POST /api/auth/verify-email/` - Verify email with token
 - `POST /api/auth/resend-verification/` - Resend verification email
 
 ### Password Reset
+
 - `POST /api/auth/forgot-password/` - Request password reset
 - `POST /api/auth/validate-reset-token/` - Validate reset token
 - `POST /api/auth/reset-password/` - Reset password
 
 ### Social Accounts
+
 - `GET /api/auth/social-accounts/` - List connected accounts
 - `POST /api/auth/social-accounts/{provider}/disconnect/` - Disconnect account
 
 ## 🔐 Environment Variables Reference
 
 ### Backend Required Variables
-| Variable | Description | Example |
-|----------|-------------|----------|
-| `DB_NAME` | PostgreSQL database name | `arhmora_db` |
-| `DB_USER` | PostgreSQL username | `postgres` |
-| `DB_PASSWORD` | PostgreSQL password | `your_password` |
-| `DB_HOST` | Database host | `localhost` |
-| `DB_PORT` | Database port | `5432` |
-| `SECRET_KEY` | Django secret key | `random_string` |
-| `DEBUG` | Debug mode | `True` / `False` |
+
+| Variable      | Description              | Example          |
+| ------------- | ------------------------ | ---------------- |
+| `DB_NAME`     | PostgreSQL database name | `arhmora_db`     |
+| `DB_USER`     | PostgreSQL username      | `postgres`       |
+| `DB_PASSWORD` | PostgreSQL password      | `your_password`  |
+| `DB_HOST`     | Database host            | `localhost`      |
+| `DB_PORT`     | Database port            | `5432`           |
+| `SECRET_KEY`  | Django secret key        | `random_string`  |
+| `DEBUG`       | Debug mode               | `True` / `False` |
 
 ### Backend Optional Variables
-| Variable | Description | Default |
-|----------|-------------|----------|
-| `EMAIL_BACKEND` | Email backend class | `console.EmailBackend` |
-| `EMAIL_HOST` | SMTP server | `smtp.gmail.com` |
-| `EMAIL_PORT` | SMTP port | `587` |
-| `EMAIL_USE_TLS` | Use TLS | `True` |
-| `EMAIL_HOST_USER` | Email username | - |
-| `EMAIL_HOST_PASSWORD` | Email password | - |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID | - |
-| `FRONTEND_URL` | Frontend URL | `http://localhost:3000` |
+
+| Variable              | Description            | Default                 |
+| --------------------- | ---------------------- | ----------------------- |
+| `EMAIL_BACKEND`       | Email backend class    | `console.EmailBackend`  |
+| `EMAIL_HOST`          | SMTP server            | `smtp.gmail.com`        |
+| `EMAIL_PORT`          | SMTP port              | `587`                   |
+| `EMAIL_USE_TLS`       | Use TLS                | `True`                  |
+| `EMAIL_HOST_USER`     | Email username         | -                       |
+| `EMAIL_HOST_PASSWORD` | Email password         | -                       |
+| `GOOGLE_CLIENT_ID`    | Google OAuth client ID | -                       |
+| `FRONTEND_URL`        | Frontend URL           | `http://localhost:3000` |
 
 ### Frontend Variables
-| Variable | Description | Example |
-|----------|-------------|----------|
-| `NEXT_PUBLIC_API_URL` | Backend API URL | `http://localhost:8000/api` |
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth client ID | - |
+
+| Variable                       | Description            | Example                     |
+| ------------------------------ | ---------------------- | --------------------------- |
+| `NEXT_PUBLIC_API_URL`          | Backend API URL        | `http://localhost:8000/api` |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth client ID | -                           |
 
 ## 📝 Development Workflow
 
 ### Making Changes to Backend
+
 1. Activate virtual environment
 2. Make your changes
 3. Create migrations: `python manage.py makemigrations`
@@ -395,6 +561,7 @@ prj-arhmora/
 5. Test your changes
 
 ### Making Changes to Frontend
+
 1. Make your changes
 2. The dev server will auto-reload
 3. Test in browser
@@ -402,6 +569,7 @@ prj-arhmora/
 ## 🚀 Production Deployment
 
 ### Backend (Railway/Heroku/DigitalOcean)
+
 1. Set all environment variables in production
 2. Set `DEBUG=False`
 3. Configure `ALLOWED_HOSTS`
@@ -410,6 +578,7 @@ prj-arhmora/
 6. Run migrations
 
 ### Frontend (Vercel/Netlify)
+
 1. Connect GitHub repository
 2. Set environment variables
 3. Deploy
@@ -421,11 +590,13 @@ This project is private and proprietary.
 ## 👤 Author
 
 **Aryan Lokare**
+
 - GitHub: [@Aryn-Lokare](https://github.com/Aryn-Lokare)
 
 ## 🙏 Support
 
 If you encounter any issues not covered in this README, please:
+
 1. Check the [Common Issues](#️-common-issues--solutions) section
 2. Verify all prerequisites are installed
 3. Ensure all environment variables are correctly set

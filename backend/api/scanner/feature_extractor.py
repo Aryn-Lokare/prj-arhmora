@@ -30,12 +30,44 @@ class FeatureExtractor:
     SQL_CHARS = set("'\"=-;")
     XSS_CHARS = set('<>()/\\')
     
+    # Vulnerability-specific pattern detection for multi-class classification
+    SQL_KEYWORDS = [
+        'select', 'union', 'insert', 'delete', 'update', 'drop', 'exec', 
+        'execute', 'xp_', 'sp_', 'waitfor', 'delay', 'benchmark', 'sleep',
+        'having', 'group by', 'order by', 'information_schema', 'table_name',
+        'column_name', 'concat', 'char(', 'cast(', 'convert('
+    ]
+    
+    XSS_PATTERNS = [
+        '<script', '</script', 'javascript:', 'onerror=', 'onload=', 
+        'onclick=', 'onmouseover=', 'onfocus=', 'onblur=', '<img', 
+        '<svg', '<iframe', '<body', '<input', 'alert(', 'confirm(',
+        'prompt(', 'document.cookie', 'document.write', '.innerhtml'
+    ]
+    
+    LFI_PATTERNS = [
+        '../', '..\\', 'etc/passwd', 'etc/shadow', 'etc/hosts',
+        'windows/system32', 'windows/system.ini', 'boot.ini', 'win.ini',
+        'php://filter', 'php://input', 'file://', 'data://', '%2e%2e',
+        '%252e', '%c0%af', '..../'
+    ]
+    
+    CMD_PATTERNS = [
+        '|', ';', '&&', '||', '`', '$(', '${', 
+        ' cat ', ' ls ', ' dir ', ' whoami', ' id ', ' pwd',
+        ' type ', ' net ', ' ping ', '/bin/', '/usr/',
+        '%0a', '%0d', '%00', '\\n', '\\r'
+    ]
+    
     # Feature names for the unified vector
     URL_FEATURE_NAMES = [
         'url_length', 'path_length', 'query_length', 'path_depth',
         'param_count', 'url_entropy', 'special_char_count', 'special_char_ratio',
         'sql_char_count', 'xss_char_count', 'digit_ratio', 'uppercase_ratio',
-        'has_encoded_chars', 'double_slash_count', 'dot_count'
+        'has_encoded_chars', 'double_slash_count', 'dot_count',
+        # Vulnerability-specific pattern counts for multi-class classification
+        'sql_keyword_count', 'xss_pattern_count', 'lfi_pattern_count', 
+        'cmd_pattern_count', 'encoding_depth'
     ]
     
     METADATA_FEATURE_NAMES = [
@@ -83,6 +115,16 @@ class FeatureExtractor:
         query = parsed.query or ''
         
         url_length = len(url)
+        url_lower = url.lower()
+        
+        # Calculate encoding depth (how many times % appears, indicating URL encoding)
+        encoding_depth = url.count('%')
+        
+        # Count vulnerability-specific patterns
+        sql_keyword_count = sum(1 for kw in self.SQL_KEYWORDS if kw in url_lower)
+        xss_pattern_count = sum(1 for p in self.XSS_PATTERNS if p in url_lower)
+        lfi_pattern_count = sum(1 for p in self.LFI_PATTERNS if p in url_lower)
+        cmd_pattern_count = sum(1 for p in self.CMD_PATTERNS if p in url_lower or p in url)
         
         return {
             'url_length': url_length,
@@ -100,6 +142,12 @@ class FeatureExtractor:
             'has_encoded_chars': 1.0 if '%' in url else 0.0,
             'double_slash_count': url.count('//') - 1,  # Subtract 1 for protocol
             'dot_count': url.count('.'),
+            # Vulnerability-specific pattern counts
+            'sql_keyword_count': sql_keyword_count,
+            'xss_pattern_count': xss_pattern_count,
+            'lfi_pattern_count': lfi_pattern_count,
+            'cmd_pattern_count': cmd_pattern_count,
+            'encoding_depth': encoding_depth,
         }
     
     def extract_metadata_features(self, headers: Optional[Dict[str, str]] = None, 

@@ -145,6 +145,39 @@ class AIInference:
             self.url_model = None
             self.url_scaler = None
             self.url_model_loaded = False
+        
+        # Load Multi-Class Vulnerability Classifier if available
+        multiclass_model_path = os.path.join(model_dir, 'vulnerability_classifier.pkl')
+        multiclass_scaler_path = os.path.join(model_dir, 'vulnerability_scaler.pkl')
+        multiclass_metadata_path = os.path.join(model_dir, 'vulnerability_metadata.pkl')
+        
+        if os.path.exists(multiclass_model_path) and os.path.exists(multiclass_scaler_path):
+            self.multiclass_model = joblib.load(multiclass_model_path)
+            self.multiclass_scaler = joblib.load(multiclass_scaler_path)
+            self.multiclass_loaded = True
+            
+            # Load metadata if available
+            if os.path.exists(multiclass_metadata_path):
+                metadata = joblib.load(multiclass_metadata_path)
+                self.class_labels = metadata.get('class_labels', {
+                    0: 'Normal', 1: 'SQL Injection', 2: 'XSS',
+                    3: 'Path Traversal', 4: 'Command Injection', 5: 'Generic Attack'
+                })
+                self.multiclass_features = metadata.get('feature_names', [])
+            else:
+                self.class_labels = {
+                    0: 'Normal', 1: 'SQL Injection', 2: 'XSS',
+                    3: 'Path Traversal', 4: 'Command Injection', 5: 'Generic Attack'
+                }
+                self.multiclass_features = []
+        else:
+            self.multiclass_model = None
+            self.multiclass_scaler = None
+            self.multiclass_loaded = False
+            self.class_labels = {
+                0: 'Normal', 1: 'SQL Injection', 2: 'XSS',
+                3: 'Path Traversal', 4: 'Command Injection', 5: 'Generic Attack'
+            }
 
     def predict(self, feature_dict):
         """
@@ -289,6 +322,78 @@ class AIInference:
             return 'flagged'
         else:
             return 'allow'
+
+    def classify_vulnerability(self, url: str) -> dict:
+        """
+        Classify URL into specific vulnerability type using multi-class model.
+        
+        Returns:
+            dict: {
+                'class': int (0-5),
+                'class_name': str,
+                'confidence': float (0-1),
+                'probabilities': dict (class -> probability)
+            }
+        """
+        if not self.multiclass_loaded:
+            return {
+                'class': 0, 
+                'class_name': 'Unknown', 
+                'confidence': 0.0,
+                'probabilities': {}
+            }
+            
+        try:
+            from .feature_extractor import FeatureExtractor
+            extractor = FeatureExtractor()
+            
+            # Extract features
+            features = extractor.extract_url_features(url)
+            
+            # Create feature vector (DataFrame) ensuring correct order
+            X = pd.DataFrame([features])
+            
+            # Ensure all features exist
+            for col in self.multiclass_features:
+                if col not in X.columns:
+                    X[col] = 0.0
+            
+            # Select only the features the model expects, in order
+            if self.multiclass_features:
+                X = X[self.multiclass_features]
+            
+            # Fill NaN
+            X = X.fillna(0)
+            
+            # Scale
+            X_scaled = self.multiclass_scaler.transform(X)
+            
+            # Predict
+            probs = self.multiclass_model.predict_proba(X_scaled)[0]
+            predicted_class = int(np.argmax(probs))
+            confidence = float(probs[predicted_class])
+            
+            # Map probabilities to class names
+            prob_dict = {
+                self.class_labels.get(i, str(i)): float(p) 
+                for i, p in enumerate(probs)
+            }
+            
+            return {
+                'class': predicted_class,
+                'class_name': self.class_labels.get(predicted_class, 'Unknown'),
+                'confidence': confidence,
+                'probabilities': prob_dict
+            }
+            
+        except Exception as e:
+            print(f"Classification error: {e}")
+            return {
+                'class': 0, 
+                'class_name': 'Error', 
+                'confidence': 0.0, 
+                'probabilities': {}
+            }
 
     def _validate_context(self, url: str) -> dict:
         """

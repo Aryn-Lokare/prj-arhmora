@@ -169,6 +169,20 @@ class ScanFinding(models.Model):
         default='suspicious'
     )
 
+    # AI ML Classification Fields (New)
+    ai_classification = models.CharField(max_length=100, blank=True, default='')
+    ai_confidence = models.FloatField(default=0.0)
+    detection_method = models.CharField(
+        max_length=20,
+        choices=[
+            ('rule', 'Rule-Based'),
+            ('ai', 'AI-Classified'),
+            ('hybrid', 'Hybrid'),
+        ],
+        default='rule'
+    )
+    class_probabilities = models.JSONField(default=dict, blank=True)
+
     def __str__(self):
         return f"{self.v_type} ({self.severity}) on {self.affected_url} [Confidence: {self.total_confidence}%]"
 

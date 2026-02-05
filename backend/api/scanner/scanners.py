@@ -8,6 +8,13 @@ from .feature_extractor import FeatureExtractor
 from .fix_prioritizer import FixPrioritizer
 from .confidence_engine import MultiFactorConfidenceEngine
 from .gemini_explainer import GeminiExplainer
+from .decision_fusion import (
+    DecisionFusionEngine,
+    create_rule_result,
+    create_ai_result,
+    create_context_result,
+    Verdict,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,19 +31,24 @@ class VulnerabilityScanner:
         self.prioritizer = FixPrioritizer()
         self.confidence_engine = MultiFactorConfidenceEngine()
         self.gemini_explainer = GeminiExplainer()
+        self.fusion_engine = DecisionFusionEngine()  # Decision Fusion Layer
 
     def log_finding(self, v_type, url, severity, evidence, remediation,
                    risk_score=0, endpoint_sensitivity='public',
                    remediation_simple='', remediation_technical='',
                    pattern_confidence=0, response_confidence=0, 
                    exploit_confidence=0, context_confidence=0,
-                   use_ai_explanation=True):
+                   use_ai_explanation=True,
+                   ai_classification='', ai_confidence=0.0, detection_method='rule'):
         """
         Log a vulnerability finding with multi-factor confidence scoring.
         
         Args:
             use_ai_explanation: If True, generate AI-powered explanations via Gemini.
                               Falls back to provided/default text if Gemini unavailable.
+            ai_classification: AI model's classification of the vulnerability
+            ai_confidence: AI model's confidence score (0-1)
+            detection_method: 'rule' or 'ai'
         """
         # Generate AI-powered explanations if enabled
         explanation_simple = ''
@@ -105,7 +117,12 @@ class VulnerabilityScanner:
             'exploit_confidence': exploit_confidence,
             'context_confidence': context_confidence,
             'total_confidence': total_confidence,
+            'confidence': total_confidence,  # Backward compatibility
             'classification': classification,
+            # AI ML Classification
+            'ai_classification': ai_classification,
+            'ai_confidence': ai_confidence,
+            'detection_method': detection_method,
         })
 
     def run_scans(self, crawled_data):
@@ -272,36 +289,63 @@ class VulnerabilityScanner:
             logger.error(f"SSRF check error: {e}")
 
     def check_ai_anomaly(self, url):
-        """Uses AI model to detect suspicious patterns in the URL."""
-        # Use the comprehensive analyze_url method
+        """Uses AI model to detect suspicious patterns in the URL using the enhanced multi-class classifier."""
+        # 1. Get binary/anomaly analysis (legacy + context validaton)
         result = self.ai_engine.analyze_url(url)
         
-        # Log if risk is significant (Medium/High) or Action is Block/Throttle
-        # With the new risk ceiling, safe contexts (risk <= 20) will naturally be skipped here.
-        if result['severity'] in ['High', 'Medium'] or result['action'] in ['block', 'throttle']:
-            # Convert AI confidence (0-1) to pattern confidence (0-30)
-            # Use threat_confidence if available, else fallback
-            threat_conf = result.get('threat_confidence', result['confidence'])
-            ai_pattern_conf = int(threat_conf * 30)
+        # 2. Get specific classification (new multi-class model)
+        classification = self.ai_engine.classify_vulnerability(url)
+        
+        # Determine if we should log this finding
+        should_log = False
+        
+        # Logic:
+        # - If binary model says High/Medium Risk, we log it.
+        # - If multi-class model says it's a specific attack with high confidence, we log it.
+        # - If multi-class model says it's NORMAL with high confidence, we suppress it (even if binary alert).
+        
+        is_high_risk = result['severity'] in ['High', 'Medium'] or result['action'] in ['block', 'throttle']
+        is_specific_attack = classification['class'] > 0 and classification['confidence'] > 0.6
+        is_confident_normal = classification['class'] == 0 and classification['confidence'] > 0.8
+        
+        if (is_high_risk or is_specific_attack) and not is_confident_normal:
+            should_log = True
             
-            # Context-aware messaging
-            anomaly_score = result.get('anomaly_score', 0)
-            if threat_conf > 0.8:
-                msg = f"AI model detected a high-confidence attack pattern (Anomaly: {anomaly_score:.1f}, Confidence: {threat_conf:.2%})"
-                simple_msg = "Our AI detected a pattern that strongly resembles a known cyber attack."
+        if should_log:
+            # Use specific class name if available, otherwise generic
+            if classification['class'] > 0:
+                vuln_type = f"AI-Detected {classification['class_name']}"
+                pattern_conf = int(classification['confidence'] * 30)
             else:
-                msg = f"AI detected unusual characteristics, but no confirmed attack pattern was found (Anomaly: {anomaly_score:.1f})"
-                simple_msg = "Our AI found this URL looks unusual, but we haven't confirmed it's an attack. It might be a false alarm or a new type of probe."
+                vuln_type = "AI-Detected Anomaly"
+                pattern_conf = int(result.get('threat_confidence', result['confidence']) * 30)
+
+            # Construct message
+            anomaly_score = result.get('anomaly_score', 0)
+            class_conf = classification['confidence']
+            
+            if classification['class'] > 0:
+                msg = f"AI model classified this as {classification['class_name']} with {class_conf:.1%} confidence."
+                simple_msg = f"Our AI checks suggest this is a {classification['class_name']} attack."
+                tech_remediation = f"AI detected {classification['class_name']} patterns. Investigate and apply specific mitigations for this vulnerability class."
+            else:
+                msg = f"AI detected unusual characteristics (Anomaly: {anomaly_score:.1f})."
+                simple_msg = "Our AI found this URL looks unusual, but we haven't confirmed it's an attack."
+                tech_remediation = "AI Anomaly Detection. Investigate request logs. Consider rate-limiting suspicious sources."
 
             self.log_finding(
-                'AI-Detected Anomaly',
+                vuln_type,
                 url,
                 result['severity'],
                 msg,
-                "Review the URL for unusual character distributions or patterns common in injection attacks that might bypass traditional rules.",
+                "Review the URL for unusual character distributions or patterns.",
                 risk_score=result['risk_score'],
                 endpoint_sensitivity=result['endpoint_sensitivity'],
                 remediation_simple=simple_msg,
-                remediation_technical="AI Anomaly Detection. Investigate request logs for this URL pattern. Consider rate-limiting or blocking source IP if pattern matches known attack signatures.",
-                pattern_confidence=ai_pattern_conf
+                remediation_technical=tech_remediation,
+                pattern_confidence=pattern_conf,
+                # New fields (need to update log_finding signature)
+                ai_classification=classification['class_name'],
+                ai_confidence=classification['confidence'],
+                detection_method='ai'
             )
