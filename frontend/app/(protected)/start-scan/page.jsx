@@ -6,6 +6,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { PageLoader } from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
 import { DashHeader } from "@/components/layout/dash-header";
+import { Sidebar } from "@/components/layout/sidebar";
 import { Search, Globe, Shield } from "lucide-react";
 
 export default function StartScanPage() {
@@ -24,26 +25,26 @@ export default function StartScanPage() {
     }
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#FDFBFB] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:32px_32px]">
-            <DashHeader />
+        <div className="flex min-h-screen bg-background">
+            <Sidebar />
 
-            <main className="flex-1 flex flex-col items-center justify-center px-4">
+            <main className="flex-1 ml-60 flex flex-col items-center justify-center px-4">
                 <div className="max-w-[800px] w-full">
                     {/* Search Section */}
                     <div className="bg-white border border-slate-200 rounded-[32px] p-8 md:p-12 shadow-2xl shadow-slate-200/40 animate-in fade-in slide-in-from-bottom-4 duration-700 ring-1 ring-slate-100">
                         <div className="max-w-[600px] mx-auto text-center">
-                            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 mx-auto border border-blue-100">
-                                <Search className="w-8 h-8 text-blue-500" />
+                            <div className="w-16 h-16 bg-[#2D5BFF]/10 rounded-xl flex items-center justify-center mb-6 mx-auto border border-[#2D5BFF]/20">
+                                <Search className="w-8 h-8 text-[#2D5BFF]" />
                             </div>
-                            <h2 className="text-2xl font-bold mb-3 tracking-tight">
+                            <h2 className="text-4xl font-bold mb-3 tracking-tight font-heading text-[#0F172A]">
                                 Launch a new security scan
                             </h2>
-                            <p className="text-slate-500 text-sm font-medium mb-10 leading-relaxed capitalize">
+                            <p className="text-[#64748B] text-sm font-medium mb-10 leading-relaxed capitalize">
                                 Scan for SQL injection, XSS, and security misconfigurations in minutes with XGBoost-powered analysis.
                             </p>
 
                             <form onSubmit={startScan} className="relative flex items-center group">
-                                <div className="absolute left-5 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                                <div className="absolute left-5 text-[#64748B] group-focus-within:text-[#2D5BFF] transition-colors duration-200">
                                     <Globe className="w-5 h-5" />
                                 </div>
                                 <input
@@ -51,13 +52,13 @@ export default function StartScanPage() {
                                     value={url}
                                     onChange={(e) => setUrl(e.target.value)}
                                     placeholder="https://your-website.com"
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-40 py-5 text-[16px] font-medium shadow-inner-sm focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white transition-all"
+                                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-12 pr-40 py-5 text-[16px] font-medium soft-shadow focus:outline-none focus:ring-4 focus:ring-[#2D5BFF]/10 focus:border-[#2D5BFF] focus:bg-white transition-all duration-200"
                                 />
                                 <div className="absolute right-2 px-1">
                                     <Button
                                         type="submit"
                                         disabled={!url}
-                                        className="bg-[#3B82F6] hover:bg-[#2563EB] text-white px-8 rounded-xl h-12 font-bold shadow-lg shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50"
+                                        className="bg-[#2D5BFF] hover:bg-[#1D4ED8] text-white px-8 rounded-xl h-12 font-bold soft-shadow transition-all duration-200 active:scale-95 disabled:opacity-50"
                                     >
                                         Scan Now
                                     </Button>

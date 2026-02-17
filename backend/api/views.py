@@ -5,7 +5,7 @@ from .tasks import run_web_scan
 from .scanner.crawler import Crawler
 from .scanner.scanners import VulnerabilityScanner
 from .scanner.report_builder import ReportBuilder
-
+from .scanner.pdf_generator import generate_pdf_report
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,6 +14,7 @@ from rest_framework import status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.http import HttpResponse
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.exceptions import TokenError
@@ -805,3 +806,33 @@ class ScanDashboardStatsView(APIView):
                 'active_targets': len(unique_targets)
             }
         })
+
+
+class DownloadReportView(APIView):
+    """
+    Download scan report as a styled PDF.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, scan_id):
+        try:
+            scan = ScanHistory.objects.get(id=scan_id, user=request.user)
+
+            pdf_buffer = generate_pdf_report(scan)
+
+            response = HttpResponse(
+                pdf_buffer.getvalue(),
+                content_type='application/pdf'
+            )
+
+            response['Content-Disposition'] = (
+                f'attachment; filename="arhmora_report_{scan_id}.pdf"'
+            )
+
+            return response
+
+        except ScanHistory.DoesNotExist:
+            return Response(
+                {"error": "Scan not found"},
+                status=404
+            )

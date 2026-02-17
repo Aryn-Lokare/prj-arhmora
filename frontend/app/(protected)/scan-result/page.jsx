@@ -6,6 +6,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { PageLoader, TechLoader } from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
 import { DashHeader } from "@/components/layout/dash-header";
+import { Sidebar } from "@/components/layout/sidebar";
 import {
   Globe,
   Check,
@@ -16,6 +17,7 @@ import {
   Sparkles,
   ExternalLink,
   RefreshCw,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
@@ -55,7 +57,7 @@ function FindingCard({ msg }) {
   return (
     <div
       className={cn(
-        "w-full bg-white border p-6 rounded-[28px] shadow-lg shadow-slate-200/20 group hover:shadow-xl hover:-translate-y-1 transition-all duration-300",
+        "w-full bg-white border p-6 rounded-xl soft-shadow group hover:shadow-lg hover:-translate-y-1 transition-all duration-200",
         msg.borderColor,
       )}
     >
@@ -110,11 +112,11 @@ function FindingCard({ msg }) {
               <AlertTriangle className="w-4 h-4 text-red-500" />
             )}
           </div>
-          <h3 className="font-bold text-xl mb-1 tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
+          <h3 className="font-bold text-xl mb-1 tracking-tight text-[#0F172A] group-hover:text-[#2D5BFF] transition-colors duration-200">
             {msg.ai_classification || msg.title}
           </h3>
           {(msg.ai_confidence > 0 || msg.total_confidence > 0) && (
-            <div className="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-wide">
+            <div className="text-[10px] font-bold text-[#64748B] mb-3 uppercase tracking-wide">
               {msg.ai_confidence > 0
                 ? `AI Confidence: ${(msg.ai_confidence * 100).toFixed(0)}%`
                 : `Confidence: ${msg.total_confidence}%`}
@@ -125,7 +127,7 @@ function FindingCard({ msg }) {
           {(msg.total_confidence > 0 || msg.pattern_confidence > 0) && (
             <div className="flex flex-wrap gap-2 mb-3">
               {msg.pattern_confidence > 0 && (
-                <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold border border-blue-100">
+                <span className="px-2 py-0.5 bg-[#2D5BFF]/10 text-[#2D5BFF] rounded text-[9px] font-bold border border-[#2D5BFF]/20">
                   Pattern: {msg.pattern_confidence}%
                 </span>
               )}
@@ -151,10 +153,10 @@ function FindingCard({ msg }) {
           <div className="flex flex-wrap items-center gap-4 mb-4">
             {msg.risk_score > 0 && (
               <div className="flex flex-col gap-1 w-full max-w-[140px]">
-                <div className="flex justify-between text-[10px] uppercase font-black tracking-widest text-slate-400">
+                <div className="flex justify-between text-[10px] uppercase font-black tracking-widest text-[#64748B]">
                   <span>Risk: {msg.risk_score}</span>
                 </div>
-                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-1.5 w-full bg-[#F1F5F9] rounded-full overflow-hidden">
                   <div
                     className={cn(
                       "h-full rounded-full",
@@ -162,7 +164,7 @@ function FindingCard({ msg }) {
                         ? "bg-red-500"
                         : msg.risk_score > 40
                           ? "bg-amber-500"
-                          : "bg-blue-500",
+                          : "bg-[#2D5BFF]",
                     )}
                     style={{ width: `${msg.risk_score}%` }}
                   />
@@ -170,25 +172,25 @@ function FindingCard({ msg }) {
               </div>
             )}
             {msg.total_confidence > 0 && (
-              <div className="text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+              <div className="text-[10px] font-bold text-[#64748B] bg-[#F1F5F9] px-2 py-1 rounded-md border border-[#E2E8F0]">
                 TOTAL CONFIDENCE: {msg.total_confidence}%
               </div>
             )}
           </div>
 
           {/* Evidence / Description Section */}
-          <div className="bg-slate-50 p-4 rounded-xl mb-4 border border-slate-100/50">
+          <div className="bg-[#F8FAFC] p-4 rounded-xl mb-4 border border-[#E2E8F0]">
             {msg.description && msg.description.includes("###") ? (
-              <div className="text-sm text-slate-600 whitespace-pre-wrap font-medium leading-relaxed">
+              <div className="text-sm text-[#64748B] whitespace-pre-wrap font-medium leading-relaxed">
                 {msg.description.split("###").map((section, idx) => {
                   if (!section.trim()) return null;
                   const [title, ...content] = section.split("\n");
                   return (
                     <div key={idx} className="mb-3 last:mb-0">
-                      <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                      <h4 className="text-[10px] font-black uppercase tracking-wider text-[#64748B] mb-1">
                         {title.trim()}
                       </h4>
-                      <div className="pl-0 text-slate-700">
+                      <div className="pl-0 text-[#334155]">
                         {content.join("\n").trim()}
                       </div>
                     </div>
@@ -197,8 +199,8 @@ function FindingCard({ msg }) {
               </div>
             ) : (
               <div className="flex items-start gap-2">
-                <Info className="w-4 h-4 text-slate-400 mt-0.5 shrink-0" />
-                <p className="text-slate-600 text-sm font-medium leading-relaxed italic">
+                <Info className="w-4 h-4 text-[#64748B] mt-0.5 shrink-0" />
+                <p className="text-[#64748B] text-sm font-medium leading-relaxed italic">
                   &quot;{msg.description}&quot;
                 </p>
               </div>
@@ -206,14 +208,14 @@ function FindingCard({ msg }) {
           </div>
 
           {/* Dual-Tone Toggle */}
-          <div className="flex items-center gap-1 mb-4 bg-slate-100/50 p-1 rounded-lg w-fit">
+          <div className="flex items-center gap-1 mb-4 bg-[#F1F5F9]/50 p-1 rounded-xl w-fit">
             <button
               onClick={() => setViewMode("simple")}
               className={cn(
-                "px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-md transition-all",
+                "px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all duration-200",
                 viewMode === "simple"
-                  ? "bg-white shadow-sm text-slate-900"
-                  : "text-slate-400 hover:text-slate-600",
+                  ? "bg-white shadow-sm text-[#0F172A]"
+                  : "text-[#64748B] hover:text-[#0F172A]",
               )}
             >
               Simple Explanation
@@ -221,10 +223,10 @@ function FindingCard({ msg }) {
             <button
               onClick={() => setViewMode("technical")}
               className={cn(
-                "px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-md transition-all",
+                "px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all duration-200",
                 viewMode === "technical"
-                  ? "bg-white shadow-sm text-slate-900"
-                  : "text-slate-400 hover:text-slate-600",
+                  ? "bg-white shadow-sm text-[#0F172A]"
+                  : "text-[#64748B] hover:text-[#0F172A]",
               )}
             >
               Technical Fix
@@ -234,16 +236,16 @@ function FindingCard({ msg }) {
           <div className="space-y-3">
             <div
               className={cn(
-                "p-5 rounded-2xl border transition-colors",
+                "p-5 rounded-2xl border transition-colors duration-200",
                 viewMode === "simple"
                   ? "bg-emerald-50/50 border-emerald-100/50"
-                  : "bg-slate-50 border-slate-200",
+                  : "bg-[#F8FAFC] border-[#E2E8F0]",
               )}
             >
               <p
                 className={cn(
                   "text-[10px] font-black uppercase tracking-[0.2em] mb-2 flex items-center gap-2",
-                  viewMode === "simple" ? "text-emerald-600" : "text-slate-600",
+                  viewMode === "simple" ? "text-emerald-600" : "text-[#64748B]",
                 )}
               >
                 {viewMode === "simple" ? (
@@ -260,7 +262,7 @@ function FindingCard({ msg }) {
                   "text-sm font-semibold leading-relaxed",
                   viewMode === "simple"
                     ? "text-emerald-800"
-                    : "text-slate-700 font-mono text-[13px]",
+                    : "text-[#334155] font-mono text-[13px]",
                 )}
               >
                 {viewMode === "simple"
@@ -419,8 +421,8 @@ function ResultsContent() {
           {
             label: "Potential",
             count: severityCounts.Low,
-            color: "text-indigo-600",
-            bg: "bg-indigo-500",
+            color: "text-[#2D5BFF]",
+            bg: "bg-[#2D5BFF]",
           },
         ],
       },
@@ -442,9 +444,9 @@ function ResultsContent() {
           border: "border-amber-100",
         },
         Low: {
-          bg: "bg-indigo-500",
-          text: "text-indigo-700",
-          border: "border-indigo-100",
+          bg: "bg-[#2D5BFF]",
+          text: "text-[#2D5BFF]",
+          border: "border-[#2D5BFF]/20",
         },
       };
 
@@ -490,16 +492,36 @@ function ResultsContent() {
     setIsScanning(false);
   };
 
+  const handleDownloadPDF = async (scanId) => {
+    try {
+      const response = await api.get(`/scan/${scanId}/download/`, {
+        responseType: "blob",
+      });
+
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `arhmora_report_${scanId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+    }
+  };
+
   if (authLoading) {
     return <PageLoader text="Connecting to Neural Cloud..." />;
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#FDFBFB]">
-      <DashHeader />
+    <div className="flex min-h-screen bg-background">
+      <Sidebar />
 
-      <main className="flex-1 overflow-y-auto pt-28 pb-24">
-        <div className="max-w-[800px] mx-auto px-4">
+      <main className="flex-1 ml-60 overflow-y-auto pt-8 pb-24 px-4">
+        <div className="max-w-[800px] mx-auto">
           {/* Activity Feed */}
           <div className="flex flex-col gap-6">
             {messages.map((msg, idx) => (
@@ -534,13 +556,24 @@ function ResultsContent() {
                   </div>
                 ) : msg.type === "summary" ? (
                   <div className="w-full bg-white border border-slate-200 p-8 rounded-[32px] shadow-2xl shadow-slate-200/30">
-                    <div className="flex items-center gap-3 text-emerald-600 font-bold mb-4">
-                      <div className="w-8 h-8 bg-emerald-50 rounded-full flex items-center justify-center">
-                        <Check className="w-5 h-5" />
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3 text-emerald-600 font-bold">
+                        <div className="w-8 h-8 bg-emerald-50 rounded-full flex items-center justify-center">
+                          <Check className="w-5 h-5" />
+                        </div>
+                        <span className="text-xl tracking-tight uppercase tracking-widest text-[14px] font-black">
+                          {msg.title}
+                        </span>
                       </div>
-                      <span className="text-xl tracking-tight uppercase tracking-widest text-[14px] font-black">
-                        {msg.title}
-                      </span>
+                      {scanData && (
+                        <Button
+                          onClick={() => handleDownloadPDF(scanData.id)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-2 h-9"
+                        >
+                          <Download className="w-4 h-4" />
+                          Download PDF
+                        </Button>
+                      )}
                     </div>
                     <p className="text-slate-600 font-medium text-base mb-8 leading-relaxed">
                       {msg.text}

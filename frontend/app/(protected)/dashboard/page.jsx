@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import { PageLoader } from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
-import { DashHeader } from "@/components/layout/dash-header";
-import { Globe, ArrowRight, Clock, Shield, Sparkles, AlertTriangle, CheckCircle, Activity } from "lucide-react";
+import { Sidebar } from "@/components/layout/sidebar";
+import { Globe, ArrowRight, Clock, Shield, Sparkles, AlertTriangle, CheckCircle, Activity, Download } from "lucide-react";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -49,28 +49,49 @@ export default function DashboardPage() {
         }
     };
 
+    const handleDownloadPDF = async (scanId, e) => {
+        e.stopPropagation(); // Prevent navigation to scan results
+        try {
+            const response = await api.get(`/scan/${scanId}/download/`, {
+                responseType: 'blob'
+            });
+            
+            // Create blob link to download
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `arhmora_report_${scanId}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error downloading PDF:', error);
+        }
+    };
+
     if (authLoading) {
         return <PageLoader text="Verifying Identity..." />;
     }
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#FDFBFB] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:32px_32px]">
-            <DashHeader />
-
-            <main className="flex-1 pt-32 pb-32 flex flex-col items-center px-4">
+        <div className="flex min-h-screen bg-background">
+            <Sidebar />
+            
+            <main className="flex-1 ml-60 p-8 flex flex-col items-center">
                 <div className="max-w-[800px] w-full">
                     {/* Welcome Section */}
-                    <div className="mb-12 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <div className="mb-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         <div className="flex items-center gap-2 mb-2">
-                            <div className="bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 flex items-center gap-1.5">
-                                <Sparkles className="w-3 h-3 text-blue-500" />
-                                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">XGBoost-Powered Security Cloud</span>
+                            <div className="bg-[#2D5BFF]/10 px-3 py-1 rounded-full border border-[#2D5BFF]/20 flex items-center gap-1.5">
+                                <Sparkles className="w-3 h-3 text-[#2D5BFF]" />
+                                <span className="text-[10px] font-bold text-[#2D5BFF] uppercase tracking-wider">XGBoost-Powered Security Cloud</span>
                             </div>
                         </div>
-                        <h1 className="text-4xl font-bold tracking-tight text-[#0F172A] mb-2">
+                        <h1 className="text-5xl font-bold tracking-tight text-[#0F172A] mb-2 font-heading">
                             Hello, {user?.first_name || 'Defender'}
                         </h1>
-                        <p className="text-slate-500 font-medium">
+                        <p className="text-[#64748B] font-medium">
                             Here is an overview of your security landscape.
                         </p>
                     </div>
@@ -79,7 +100,7 @@ export default function DashboardPage() {
                     <div className="flex justify-end mb-8">
                         <Button
                             onClick={() => router.push('/start-scan')}
-                            className="bg-[#3B82F6] hover:bg-[#2563EB] text-white px-6 rounded-xl h-10 font-bold shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-2"
+                            className="bg-[#2D5BFF] hover:bg-[#1D4ED8] text-white px-6 rounded-xl h-11 font-bold soft-shadow transition-all duration-200 active:scale-95 flex items-center gap-2"
                         >
                             <Globe className="w-4 h-4" />
                             New Scan
@@ -89,7 +110,7 @@ export default function DashboardPage() {
                     {/* Risk Score & Top Fixes */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
                         {/* Risk Score Card */}
-                        <div className="bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm relative overflow-hidden group">
+                        <div className="bg-white border border-[#E2E8F0] rounded-xl p-6 soft-shadow relative overflow-hidden group">
                             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                                 <Activity className="w-24 h-24 text-blue-600" />
                             </div>
@@ -152,7 +173,7 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Top Prioritized Fixes */}
-                        <div className="md:col-span-2 bg-white border border-slate-200 rounded-[24px] p-6 shadow-sm">
+                        <div className="md:col-span-2 bg-white border border-[#E2E8F0] rounded-xl p-6 soft-shadow">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
                                     <Sparkles className="w-3 h-3 text-indigo-500" /> AI-Prioritized Fixes
@@ -179,7 +200,7 @@ export default function DashboardPage() {
                                            </div>
                                            <div className="flex-1 min-w-0">
                                                <div className="flex items-center justify-between mb-1">
-                                                   <h4 className="font-bold text-slate-900 text-sm truncate pr-4 group-hover:text-indigo-700 transition-colors">
+                                                   <h4 className="font-bold text-[#0F172A] text-sm truncate pr-4 group-hover:text-[#2D5BFF] transition-colors duration-200">
                                                        {fix.v_type}
                                                    </h4>
                                                    <span className="text-[10px] font-mono text-slate-400 truncate max-w-[120px]">
@@ -284,14 +305,24 @@ export default function DashboardPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-2">
                                             {scan.status === 'Completed' && (
-                                                <div className="hidden md:flex flex-col items-end">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Findings</span>
-                                                    <span className="text-sm font-bold text-slate-900">
-                                                        {scan.findings?.length || 0} Vulnerabilities
-                                                    </span>
-                                                </div>
+                                                <>
+                                                    <div className="hidden md:flex flex-col items-end">
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Findings</span>
+                                                        <span className="text-sm font-bold text-slate-900">
+                                                            {scan.findings?.length || 0} Vulnerabilities
+                                                        </span>
+                                                    </div>
+                                                    <Button
+                                                        onClick={(e) => handleDownloadPDF(scan.id, e)}
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-9 w-9 p-0 rounded-full hover:bg-blue-100 text-slate-400 hover:text-blue-600 transition-colors"
+                                                    >
+                                                        <Download className="w-4 h-4" />
+                                                    </Button>
+                                                </>
                                             )}
                                             <div className="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
                                                 <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" />

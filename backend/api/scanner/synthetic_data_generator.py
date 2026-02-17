@@ -21,8 +21,7 @@ from typing import List, Tuple
 
 # Output path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', '..', '..'))
-OUTPUT_DIR = os.path.join(ROOT_DIR, 'data', 'training_data')
+OUTPUT_DIR = r'C:\Users\Aryan\OneDrive\Desktop\data\training_data'
 
 # Class labels
 CLASS_LABELS = {

@@ -8,6 +8,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { PageLoader } from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
 import { DashHeader } from "@/components/layout/dash-header";
+import { Sidebar } from "@/components/layout/sidebar";
 import { ArrowRight, Clock, Globe, Shield, Filter, Search, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
@@ -49,34 +50,34 @@ export default function HistoryPage() {
     }
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#FDFBFB]">
-            <DashHeader />
+        <div className="flex min-h-screen bg-background">
+            <Sidebar />
 
-            <main className="flex-1 pt-32 pb-24">
+            <main className="flex-1 ml-60 pt-8 pb-24">
                 <div className="max-w-[1000px] mx-auto px-6">
                     {/* Header Section */}
                     <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         <div>
-                            <div className="flex items-center gap-2 mb-2 text-blue-600">
+                            <div className="flex items-center gap-2 mb-2 text-[#2D5BFF]">
                                 <Shield className="w-4 h-4" />
                                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Scan Archive</span>
                             </div>
-                            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Historical Assessments</h1>
-                            <p className="text-slate-500 font-medium text-sm mt-1">Manage and review your organization's security posture.</p>
+                            <h1 className="text-4xl font-bold tracking-tight text-[#0F172A] font-heading">Historical Assessments</h1>
+                            <p className="text-[#64748B] font-medium text-sm mt-1">Manage and review your organization's security posture.</p>
                         </div>
 
                         <div className="flex items-center gap-3">
                             <div className="relative group">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] group-focus-within:text-[#2D5BFF] transition-colors duration-200" />
                                 <input
                                     type="text"
                                     placeholder="Search target URL..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm font-medium w-full md:w-64 focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500 transition-all shadow-sm"
+                                    className="bg-white border border-[#E2E8F0] rounded-xl pl-10 pr-4 py-2 text-sm font-medium w-full md:w-64 focus:outline-none focus:ring-4 focus:ring-[#2D5BFF]/5 focus:border-[#2D5BFF] transition-all duration-200 soft-shadow"
                                 />
                             </div>
-                            <Button variant="outline" className="rounded-xl border-slate-200 text-slate-600 font-bold px-4 h-10 shadow-sm hover:bg-white hover:border-slate-300">
+                            <Button variant="outline" className="rounded-xl border-[#E2E8F0] text-[#64748B] font-bold px-4 h-10 soft-shadow hover:bg-white hover:border-[#2D5BFF]   transition-colors duration-200">
                                 <Filter className="w-4 h-4 mr-2 opacity-60" /> Filter
                             </Button>
                         </div>

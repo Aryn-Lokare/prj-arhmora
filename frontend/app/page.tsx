@@ -15,7 +15,7 @@ export default function HomePage() {
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground font-bold italic">Secure Connection Active</span>
         </div>
 
-        <h1 className="text-6xl font-black tracking-tight text-foreground leading-[0.9] uppercase">
+        <h1 className="text-6xl font-bold tracking-tight text-foreground leading-[0.9] uppercase font-heading">
           Simple <span className="text-primary italic">Identity</span> <br />
           Protected.
         </h1>

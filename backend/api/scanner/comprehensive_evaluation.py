@@ -26,8 +26,7 @@ from api.scanner.csic_loader import CSICDataLoader
 # Paths
 # Paths
 MODELS_DIR = os.path.join(BASE_DIR, 'models')
-ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', '..', '..'))
-TRAINING_DATA_DIR = os.path.join(ROOT_DIR, 'data', 'training_data')
+TRAINING_DATA_DIR = r'C:\Users\Aryan\OneDrive\Desktop\data\training_data'
 TRAINING_DATA_FILE = os.path.join(TRAINING_DATA_DIR, 'training_data.csv')
 CSIC_DATA_DIR = r'C:\Users\Aryan\OneDrive\Desktop\data'
 

@@ -3,6 +3,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -35,11 +36,17 @@ export function DashHeader() {
 
     return (
         <header className="fixed top-2 left-1/2 -translate-x-1/2 w-[95%] max-w-[1200px] h-16 bg-white/80 backdrop-blur-xl border border-slate-200/60 z-50 px-6 rounded-2xl flex items-center justify-between shadow-sm shadow-slate-200/50">
-            <div className="flex items-center">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push("/dashboard")}>
+                <Image
+                     src="/logo.png"
+                     alt="Arhmora Logo"
+                     width={28}
+                     height={28}
+                     className="w-7 h-7 object-contain"
+                />
                 <span
-                    className="text-2xl font-bold tracking-tighter text-[#0F172A] lowercase cursor-pointer"
+                    className="text-2xl font-bold tracking-tighter text-[#0F172A] lowercase"
                     style={{ fontFamily: 'var(--font-space-grotesk), sans-serif' }}
-                    onClick={() => router.push("/dashboard")}
                 >
                     arhmora
                 </span>
