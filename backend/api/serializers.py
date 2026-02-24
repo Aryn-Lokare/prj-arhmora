@@ -158,8 +158,14 @@ class ScanFindingSerializer(serializers.ModelSerializer):
             'pattern_confidence', 'response_confidence', 'exploit_confidence',
             'context_confidence', 'total_confidence',
             'validation_status', 'classification',
-            # AI ML Classification (New)
+            # AI ML Classification
             'ai_classification', 'ai_confidence', 'detection_method', 'class_probabilities',
+            # AutoTriage fields (NEW)
+            'triage_reason', 'requires_immediate_attention',
+            # Forensic Evidence fields (NEW)
+            'forensic_evidence', 'evidence_captured_at',
+            # AutoFix fields (NEW)
+            'code_fix', 'code_language', 'code_framework', 'fix_references',
         )
 
 
@@ -168,5 +174,6 @@ class ScanHistorySerializer(serializers.ModelSerializer):
     
     class Meta:
         model = ScanHistory
-        fields = ('id', 'target_url', 'timestamp', 'status', 'task_id', 'findings')
+        fields = ('id', 'target_url', 'timestamp', 'status', 'task_id', 'findings', 'current_step')
         read_only_fields = ('id', 'timestamp', 'status', 'task_id')
+

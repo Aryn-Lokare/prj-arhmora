@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { authService } from "@/lib/auth";
@@ -16,7 +16,8 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 
-export default function VerifyEmailPage() {
+// Inner component using useSearchParams — must be inside Suspense
+function VerifyEmailContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const token = searchParams.get("token");
@@ -212,5 +213,30 @@ export default function VerifyEmailPage() {
                 </CardFooter>
             </Card>
         </div>
+    );
+}
+
+// Fallback for Suspense boundary
+function VerifyEmailFallback() {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+            <Card className="w-full max-w-md">
+                <CardHeader>
+                    <div className="flex justify-center mb-6">
+                        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+                    </div>
+                    <CardTitle className="text-2xl text-center">Loading...</CardTitle>
+                </CardHeader>
+            </Card>
+        </div>
+    );
+}
+
+// Default export wraps inner component in Suspense — required for useSearchParams in App Router
+export default function VerifyEmailPage() {
+    return (
+        <Suspense fallback={<VerifyEmailFallback />}>
+            <VerifyEmailContent />
+        </Suspense>
     );
 }

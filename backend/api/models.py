@@ -103,6 +103,10 @@ class ScanHistory(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     task_id = models.CharField(max_length=255, blank=True, null=True)
+    current_step = models.CharField(max_length=255, default='Initializing...')
+
+    # AI Exploitability & Fix Prioritization Engine output (cached post-scan)
+    ai_priority_result = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ['-timestamp']
@@ -182,6 +186,20 @@ class ScanFinding(models.Model):
         default='rule'
     )
     class_probabilities = models.JSONField(default=dict, blank=True)
+    
+    # AutoTriage Fields (NEW)
+    triage_reason = models.TextField(blank=True, default='')  # Human-readable triage explanation
+    requires_immediate_attention = models.BooleanField(default=False)  # Alert flag
+    
+    # Forensic Evidence Fields (NEW)
+    forensic_evidence = models.JSONField(default=dict, blank=True)  # HTTP capture and exploitation proof
+    evidence_captured_at = models.DateTimeField(null=True, blank=True)  # Evidence capture timestamp
+    
+    # AutoFix Code Generation Fields (NEW)
+    code_fix = models.TextField(blank=True, default='')  # Generated code snippet
+    code_language = models.CharField(max_length=50, blank=True, default='')  # e.g., 'python', 'php'
+    code_framework = models.CharField(max_length=50, blank=True, default='')  # e.g., 'django', 'laravel'
+    fix_references = models.JSONField(default=list, blank=True)  # Documentation URLs
 
     def __str__(self):
         return f"{self.v_type} ({self.severity}) on {self.affected_url} [Confidence: {self.total_confidence}%]"
@@ -235,6 +253,28 @@ class ScannerMetrics(models.Model):
     
     def __str__(self):
         return f"Metrics for Scan {self.scan_id}: P={self.precision:.2f}, R={self.recall:.2f}"
+
+
+class DiscoveryMemory(models.Model):
+    """
+    Persistence layer for the Adaptive Intelligence Engine (Layer 1).
+    Stores successful payloads and framework information to optimize future scans.
+    """
+    target_hash = models.CharField(max_length=64, db_index=True)
+    endpoint = models.TextField()
+    parameter = models.CharField(max_length=255)
+    vuln_type = models.CharField(max_length=50)
+    framework = models.CharField(max_length=100, null=True, blank=True)
+    payload_used = models.TextField()
+    success = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "Discovery Memories"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.vuln_type} success on {self.parameter} ({self.framework or 'Unknown'})"
 
 
 # Signals

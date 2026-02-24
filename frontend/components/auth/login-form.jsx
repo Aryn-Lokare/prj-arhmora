@@ -14,7 +14,6 @@ import { GoogleLoginButton } from "@/components/auth/google-login-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff } from "lucide-react";
 
 const loginSchema = z.object({
@@ -57,115 +56,107 @@ export function LoginForm() {
     };
 
     return (
-        <div className="w-full max-w-[400px] flex flex-col items-center animate-in fade-in zoom-in duration-500">
-            {/* Header Section */}
-            <div className="text-center mb-8 w-full flex flex-col items-center">
-                <div className="mb-4">
-                    <Image src="/logo.png" alt="Arhmora" width={48} height={48} className="w-12 h-12 object-contain" />
+        <div className="w-full max-w-[420px] flex flex-col items-center animate-in fade-in zoom-in duration-500">
+            {/* Form Card */}
+            <div className="w-full bg-white dark:bg-[#131415] rounded-3xl p-10 card-shadow border border-[#e2e8f0] dark:border-[#2a2b2c] transition-colors duration-300">
+                <div className="text-center mb-10">
+                    <h1 className="text-[32px] font-bold text-[#131415] dark:text-white mb-2 font-heading tracking-tight leading-none">Log in</h1>
+                    <p className="text-[#767a8c] dark:text-[#94a3b8] text-sm font-medium">Safe in, Secure out. Arhmora</p>
                 </div>
-                <h1 className="text-[48px] font-bold text-[#0F172A] mb-2 tracking-tight leading-tight font-heading">Login</h1>
-                <p className="text-[#64748B] text-base font-medium">Hi, Welcome back</p>
-            </div>
 
-            {/* Google Login Section */}
-            <div className="w-full mb-6">
-                <GoogleLoginButton onError={(msg) => setError(msg)} />
-            </div>
-
-            {/* Divider */}
-            <div className="w-full flex items-center gap-4 mb-6">
-                <div className="flex-1 h-[1px] bg-[#E2E8F0]"></div>
-                <span className="text-[#64748B] text-xs font-semibold uppercase tracking-wide whitespace-nowrap">or Login with Email</span>
-                <div className="flex-1 h-[1px] bg-[#E2E8F0]"></div>
-            </div>
-
-            {/* Login Form */}
-            <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-4">
-                {/* Error Alert */}
-                {error && (
-                    <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl animate-in slide-in-from-top-2">
-                        {error}
-                    </div>
-                )}
-
-                {/* Email Field */}
-                <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-bold text-[#0F172A]">Email</Label>
-                    <Input
-                        id="email"
-                        type="email"
-                        placeholder="E.g. johndoe@email.com"
-                        className="h-11 border-[#E2E8F0] rounded-xl focus-visible:ring-[#2D5BFF] focus-visible:border-[#2D5BFF] placeholder:text-[#64748B] transition-all duration-200"
-                        {...register("email")}
-                        disabled={isLoading}
-                    />
-                    {errors.email && (
-                        <p className="text-xs text-red-500 font-medium px-1">{errors.email.message}</p>
+                {/* Login Form */}
+                <form onSubmit={handleSubmit(onSubmit)} className="w-full space-y-6">
+                    {/* Error Alert */}
+                    {error && (
+                        <div className="p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl animate-in slide-in-from-top-2">
+                            {error}
+                        </div>
                     )}
-                </div>
 
-                {/* Password Field */}
-                <div className="space-y-2">
-                    <Label htmlFor="password" className="text-sm font-bold text-[#0F172A]">Password</Label>
-                    <div className="relative">
+                    {/* Email Field */}
+                    <div className="space-y-2">
+                        <Label htmlFor="email" className="text-[13px] font-bold text-[#131415] dark:text-white uppercase tracking-wider opacity-70">Email Address</Label>
                         <Input
-                            id="password"
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Enter your password"
-                            className="h-11 border-[#E2E8F0] rounded-xl focus-visible:ring-[#2D5BFF] focus-visible:border-[#2D5BFF] placeholder:text-[#64748B] pr-10 transition-all duration-200"
-                            {...register("password")}
+                            id="email"
+                            type="email"
+                            placeholder="johndoe@email.com"
+                            className="h-12 border-[#eaecf0] dark:border-[#2a2b2c] bg-[#f9fafb] dark:bg-[#1a1b1c] dark:text-white rounded-xl focus-visible:ring-[#1153ed] focus-visible:border-[#1153ed] placeholder:text-[#94a3b8] transition-all duration-200"
+                            {...register("email")}
                             disabled={isLoading}
                         />
-                        <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#334155] transition-colors duration-200 focus:outline-none"
-                        >
-                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
+                        {errors.email && (
+                            <p className="text-xs text-red-500 font-medium px-1">{errors.email.message}</p>
+                        )}
                     </div>
-                    {errors.password && (
-                        <p className="text-xs text-red-500 font-medium px-1">{errors.password.message}</p>
-                    )}
-                </div>
 
-                {/* Remember Me & Forgot Password */}
-                <div className="flex items-center justify-between py-1">
-                    <div className="flex items-center space-x-2">
-                        <Checkbox id="remember" className="border-[#E2E8F0] rounded data-[state=checked]:bg-[#2D5BFF] data-[state=checked]:border-[#2D5BFF] transition-all duration-200" />
-                        <label
-                            htmlFor="remember"
-                            className="text-sm font-semibold text-[#64748B] cursor-pointer select-none"
-                        >
-                            Remember Me
-                        </label>
+                    {/* Password Field */}
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between px-1">
+                            <Label htmlFor="password" className="text-[13px] font-bold text-[#131415] dark:text-white uppercase tracking-wider opacity-70">Password</Label>
+                            <Link
+                                href="/forgot-password"
+                                className="text-[13px] font-bold text-[#1153ed] dark:text-blue-400 hover:text-[#03569d] dark:hover:text-blue-300 transition-colors duration-200"
+                            >
+                                Forgot?
+                            </Link>
+                        </div>
+                        <div className="relative">
+                            <Input
+                                id="password"
+                                type={showPassword ? "text" : "password"}
+                                placeholder="••••••••"
+                                className="h-12 border-[#eaecf0] dark:border-[#2a2b2c] bg-[#f9fafb] dark:bg-[#1a1b1c] dark:text-white rounded-xl focus-visible:ring-[#1153ed] focus-visible:border-[#1153ed] placeholder:text-[#94a3b8] pr-12 transition-all duration-200"
+                                {...register("password")}
+                                disabled={isLoading}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8] dark:text-[#64748b] hover:text-[#4b5666] dark:hover:text-white transition-colors duration-200 focus:outline-none"
+                            >
+                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                        </div>
+                        {errors.password && (
+                            <p className="text-xs text-red-500 font-medium px-1">{errors.password.message}</p>
+                        )}
                     </div>
-                    <Link
-                        href="/forgot-password"
-                        className="text-sm font-semibold text-[#2D5BFF] hover:text-[#1D4ED8] transition-colors duration-200"
-                    >
-                        Forgot Password?
-                    </Link>
+
+                    {/* Submit Button */}
+                    <div className="space-y-4">
+                        <Button 
+                            type="submit" 
+                            className="w-full h-12 bg-[#1153ed] dark:bg-blue-600 hover:bg-[#03569d] dark:hover:bg-blue-500 text-white font-bold text-base rounded-xl border-none transition-all duration-300 shadow-md active:scale-[0.98]"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? "Authenticating..." : "Login"}
+                        </Button>
+
+                        <div className="relative flex items-center justify-center py-2">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t border-[#f2f4f7] dark:border-[#2a2b2c]" />
+                            </div>
+                            <span className="relative bg-white dark:bg-[#131415] px-4 text-[11px] font-bold text-[#b4b7c1] dark:text-[#64748b] uppercase tracking-widest transition-colors">
+                                Or continue with
+                            </span>
+                        </div>
+
+                        <GoogleLoginButton 
+                            onError={setError} 
+                            onSuccess={() => {}} // Redirection handled inside the component
+                        />
+                    </div>
+                </form>
+
+                {/* Footer Section in Card */}
+                <div className="mt-8 pt-8 border-t border-[#f2f4f7] dark:border-[#2a2b2c] text-center">
+                    <p className="text-sm text-[#767a8c] dark:text-[#94a3b8] font-semibold">
+                        Don't have an account?{" "}
+                        <Link href="/signup" className="text-[#1153ed] dark:text-blue-400 font-bold hover:text-[#03569d] transition-colors duration-200 ml-1">
+                            Create account
+                        </Link>
+                    </p>
                 </div>
-
-                {/* Submit Button */}
-                <Button 
-                    type="submit" 
-                    className="w-full h-11 bg-[#2D5BFF] hover:bg-[#1D4ED8] text-white font-bold text-base rounded-xl border-none transition-all duration-200 shadow-sm active:scale-[0.98]"
-                    disabled={isLoading}
-                >
-                    {isLoading ? "Logging in..." : "Login"}
-                </Button>
-            </form>
-
-            {/* Footer */}
-            <div className="mt-6 text-center">
-                <p className="text-sm text-[#64748B] font-semibold">
-                    Not registered yet?{" "}
-                    <Link href="/signup" className="text-[#2D5BFF] font-bold hover:text-[#1D4ED8] transition-colors duration-200">
-                        Create an account
-                    </Link>
-                </p>
             </div>
         </div>
     );

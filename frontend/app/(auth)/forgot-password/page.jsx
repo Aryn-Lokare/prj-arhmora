@@ -58,13 +58,13 @@ export default function ForgotPasswordPage() {
 
     if (isSuccess) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-                <Card className="w-full max-w-md">
-                    <CardHeader>
-                        <div className="flex justify-center mb-4">
-                            <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
+            <div className="min-h-screen flex items-center justify-center bg-[#f2f4f7] dark:bg-[#0a0a0b] p-4 transition-colors duration-300">
+                <Card className="w-full max-w-md bg-white dark:bg-[#131415] border-[#e2e8f0] dark:border-[#2a2b2c] rounded-[32px] overflow-hidden soft-shadow">
+                    <CardHeader className="pt-10">
+                        <div className="flex justify-center mb-6">
+                            <div className="h-16 w-16 rounded-3xl bg-blue-50 dark:bg-blue-900/10 flex items-center justify-center border border-blue-100 dark:border-blue-900/20">
                                 <svg
-                                    className="h-8 w-8 text-blue-600"
+                                    className="h-8 w-8 text-[#1153ed] dark:text-blue-400"
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
@@ -78,25 +78,25 @@ export default function ForgotPasswordPage() {
                                 </svg>
                             </div>
                         </div>
-                        <CardTitle className="text-2xl text-center">Check your email</CardTitle>
-                        <CardDescription className="text-center">
-                            We&apos;ve sent a password reset link to <strong>{getValues("email")}</strong>
+                        <CardTitle className="text-2xl font-bold text-center text-[#131415] dark:text-white">Check your email</CardTitle>
+                        <CardDescription className="text-center text-[#767a8c] dark:text-[#94a3b8] font-medium mt-2">
+                            We&apos;ve sent a password reset link to <strong className="text-[#131415] dark:text-white">{getValues("email")}</strong>
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            <p className="text-sm text-gray-600 text-center">
+                            <p className="text-sm text-[#767a8c] dark:text-[#94a3b8] text-center font-medium">
                                 Click the link in the email to reset your password. The link will expire in 1 hour.
                             </p>
 
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                <p className="text-sm text-yellow-800">
-                                    <strong>Didn&apos;t receive the email?</strong>
+                            <div className="bg-[#fefce8] dark:bg-yellow-900/10 border border-[#fef08a] dark:border-yellow-900/20 rounded-xl p-4">
+                                <p className="text-xs text-[#854d0e] dark:text-yellow-500 font-medium">
+                                    <strong className="font-bold">Didn&apos;t receive the email?</strong>
                                     <br />
                                     Check your spam folder or{" "}
                                     <button
                                         onClick={() => setIsSuccess(false)}
-                                        className="text-primary hover:underline"
+                                        className="text-[#1153ed] dark:text-blue-400 font-bold hover:underline"
                                     >
                                         try again
                                     </button>
@@ -104,8 +104,8 @@ export default function ForgotPasswordPage() {
                             </div>
                         </div>
                     </CardContent>
-                    <CardFooter className="flex justify-center">
-                        <Link href="/login" className="text-sm text-primary hover:underline">
+                    <CardFooter className="flex justify-center pb-10">
+                        <Link href="/login" className="text-sm font-bold text-[#1153ed] dark:text-blue-400 hover:text-[#03569d] dark:hover:text-blue-300 transition-colors">
                             Back to Login
                         </Link>
                     </CardFooter>
@@ -115,13 +115,13 @@ export default function ForgotPasswordPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-            <Card className="w-full max-w-md">
-                <CardHeader>
-                    <div className="flex justify-center mb-4">
-                        <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center bg-[#f2f4f7] dark:bg-[#0a0a0b] p-4 transition-colors duration-300">
+            <Card className="w-full max-w-md bg-white dark:bg-[#131415] border-[#e2e8f0] dark:border-[#2a2b2c] rounded-[32px] overflow-hidden soft-shadow">
+                <CardHeader className="pt-10">
+                    <div className="flex justify-center mb-6">
+                        <div className="h-16 w-16 rounded-3xl bg-[#f2f4f7] dark:bg-[#1e293b] flex items-center justify-center border border-[#eaecf0] dark:border-[#2a2b2c]">
                             <svg
-                                className="h-8 w-8 text-gray-600"
+                                className="h-8 w-8 text-[#767a8c] dark:text-[#94a3b8]"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -135,35 +135,40 @@ export default function ForgotPasswordPage() {
                             </svg>
                         </div>
                     </div>
-                    <CardTitle className="text-2xl text-center">Forgot your password?</CardTitle>
-                    <CardDescription className="text-center">
+                    <CardTitle className="text-2xl font-bold text-center text-[#131415] dark:text-white">Forgot password?</CardTitle>
+                    <CardDescription className="text-center text-[#767a8c] dark:text-[#94a3b8] font-medium mt-2">
                         No worries! Enter your email and we&apos;ll send you a reset link.
                     </CardDescription>
                 </CardHeader>
 
                 <CardContent>
-                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                         {error && (
-                            <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
+                            <div className="p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl">
                                 {error}
                             </div>
                         )}
 
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email" className="text-[13px] font-bold text-[#131415] dark:text-white uppercase tracking-wider opacity-70">Email Address</Label>
                             <Input
                                 id="email"
                                 type="email"
                                 placeholder="john@example.com"
+                                className="h-12 border-[#eaecf0] dark:border-[#2a2b2c] bg-[#f9fafb] dark:bg-[#1a1b1c] dark:text-white rounded-xl focus-visible:ring-[#1153ed] focus-visible:border-[#1153ed] placeholder:text-[#94a3b8] transition-all"
                                 {...register("email")}
                                 disabled={isLoading}
                             />
                             {errors.email && (
-                                <p className="text-sm text-red-500">{errors.email.message}</p>
+                                <p className="text-xs text-red-500 font-medium px-1">{errors.email.message}</p>
                             )}
                         </div>
 
-                        <Button type="submit" className="w-full" disabled={isLoading}>
+                        <Button 
+                            type="submit" 
+                            className="w-full h-12 bg-[#1153ed] dark:bg-blue-600 hover:bg-[#03569d] dark:hover:bg-blue-500 text-white font-bold text-base rounded-xl border-none transition-all duration-300 shadow-md active:scale-[0.98]" 
+                            disabled={isLoading}
+                        >
                             {isLoading ? (
                                 <span className="flex items-center gap-2">
                                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
@@ -191,8 +196,8 @@ export default function ForgotPasswordPage() {
                     </form>
                 </CardContent>
 
-                <CardFooter className="flex justify-center">
-                    <Link href="/login" className="text-sm text-primary hover:underline">
+                <CardFooter className="flex justify-center pb-10">
+                    <Link href="/login" className="text-sm font-bold text-[#1153ed] dark:text-blue-400 hover:text-[#03569d] dark:hover:text-blue-300 transition-colors">
                         Back to Login
                     </Link>
                 </CardFooter>

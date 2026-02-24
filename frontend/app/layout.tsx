@@ -1,15 +1,24 @@
 // frontend/app/layout.js
 
 import React from "react";
-import { Inter, Source_Sans_3 } from "next/font/google";
+import { Inter, Space_Grotesk, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { GoogleProvider } from "@/components/providers/google-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const sourceSans3 = Source_Sans_3({
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
-  variable: "--font-source-sans",
+  variable: "--font-space-grotesk",
+});
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+});
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-plus-jakarta-sans",
 });
 
 export const metadata = {
@@ -23,13 +32,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${sourceSans3.variable} font-sans`}
+        className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} ${plusJakartaSans.variable} font-sans`}
       >
         <GoogleProvider>
           <AuthProvider>
-            {children}
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="light"
+              forcedTheme="light"
+              disableTransitionOnChange
+            >
+              {children}
+            </ThemeProvider>
           </AuthProvider>
         </GoogleProvider>
       </body>

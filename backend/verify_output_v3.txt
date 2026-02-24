@@ -1,0 +1,42 @@
+﻿
+[SCENARIO]: SQLi Time-Based (True Positive)
+Payload: ' AND SLEEP(5)--
+Detected Type: Suspicious Time-Based Behavior (SQL context)
+Confidence: 40%
+Evidence: ['Time-delay confirmed with SQL markers in payload', 'Score below confirmation threshold']
+Risk Score: 60
+
+[SCENARIO]: RCE Time-Based (Suspicious - No OS markers in payload)
+Payload: sleep 5
+Detected Type: Suspicious Time-Based Behavior (RCE context)
+Confidence: 40%
+Evidence: ['Time-delay detected (insufficient alone for RCE)', 'OS output validation mandatory for RCE confirmation']
+Risk Score: 65
+
+[SCENARIO]: RCE Time-Based (Confirmed via Markers)
+Payload: ; sleep 5
+Detected Type: Suspicious Time-Based Behavior (RCE context)
+Confidence: 40%
+Evidence: ['Time-delay detected (insufficient alone for RCE)', 'OS output validation mandatory for RCE confirmation']
+Risk Score: 65
+
+[SCENARIO]: RCE Output-Based (True Positive)
+Payload: ; id
+Detected Type: Remote Code Execution
+Confidence: 95%
+Evidence: ['Linux id output detected', 'Command separator validated via OS output']
+Risk Score: 95
+
+[SCENARIO]: SQLi SLEEP in RCE check (False Positive Avoidance)
+Payload: ' AND SLEEP(5)--
+Detected Type: Suspicious Time-Based Behavior (SQL context)
+Confidence: 40%
+Evidence: ['Time-delay confirmed with SQL markers in payload', 'Score below confirmation threshold']
+Risk Score: 60
+
+[SCENARIO]: Generic Delay (Suspicious)
+Payload: some_param=value
+Detected Type: Suspicious Time-Based Behavior
+Confidence: 40%
+Evidence: ['Anomalous delay detected without clear context markers']
+Risk Score: 50

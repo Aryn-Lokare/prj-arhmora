@@ -21,10 +21,10 @@ from .views import (
     # Scanner
     ScanView,
     ScanHistoryView,
-    ScanHistoryView,
     ScanResultView,
     ScanDashboardStatsView,
     DownloadReportView,
+    AIReportGenerateView,
 )
 
 urlpatterns = [
@@ -52,6 +52,7 @@ urlpatterns = [
     path('scan/', ScanView.as_view(), name='scan'),
     path('scan/history/', ScanHistoryView.as_view(), name='scan_history'),
     path('scan/results/<int:pk>/', ScanResultView.as_view(), name='scan_result'),
+    path('reports/<int:scan_id>/generate/', AIReportGenerateView.as_view(), name='generate-report'),
     path('scan/<int:scan_id>/download/', DownloadReportView.as_view(), name='download-report'),
     path('scan/dashboard-stats/', ScanDashboardStatsView.as_view(), name='scan_dashboard_stats'),
 ]

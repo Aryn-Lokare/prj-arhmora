@@ -5,87 +5,116 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import { PageLoader } from "@/components/ui/loader";
 import { Button } from "@/components/ui/button";
-import { DashHeader } from "@/components/layout/dash-header";
 import { Sidebar } from "@/components/layout/sidebar";
-import { Search, Globe, Shield } from "lucide-react";
+import { Search, Globe, Shield, ArrowUpRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function StartScanPage() {
-    const { logout, loading: authLoading, user } = useAuth();
-    const router = useRouter();
-    const [url, setUrl] = useState("");
+  const { loading: authLoading, user } = useAuth();
+  const router = useRouter();
+  const [url, setUrl] = useState("");
+  const [urlError, setUrlError] = useState("");
 
-    const startScan = (e) => {
-        e.preventDefault();
-        if (!url) return;
-        router.push(`/scan-result?url=${encodeURIComponent(url)}`);
-    };
-
-    if (authLoading) {
-        return <PageLoader text="Authenticating..." />;
+  const normalizeUrl = (raw) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return "";
+    if (!/^https?:\/\//i.test(trimmed)) {
+      return "https://" + trimmed;
     }
+    return trimmed;
+  };
 
-    return (
-        <div className="flex min-h-screen bg-background">
-            <Sidebar />
+  const startScan = (e) => {
+    e.preventDefault();
+    setUrlError("");
+    const normalized = normalizeUrl(url);
+    if (!normalized) return;
+    try {
+      const parsed = new URL(normalized);
+      if (!parsed.hostname) {
+        setUrlError("Please enter a valid URL");
+        return;
+      }
+    } catch {
+      setUrlError("Please enter a valid URL");
+      return;
+    }
+    router.push(`/scanning?url=${encodeURIComponent(normalized)}`);
+  };
 
-            <main className="flex-1 ml-60 flex flex-col items-center justify-center px-4">
-                <div className="max-w-[800px] w-full">
-                    {/* Search Section */}
-                    <div className="bg-white border border-slate-200 rounded-[32px] p-8 md:p-12 shadow-2xl shadow-slate-200/40 animate-in fade-in slide-in-from-bottom-4 duration-700 ring-1 ring-slate-100">
-                        <div className="max-w-[600px] mx-auto text-center">
-                            <div className="w-16 h-16 bg-[#2D5BFF]/10 rounded-xl flex items-center justify-center mb-6 mx-auto border border-[#2D5BFF]/20">
-                                <Search className="w-8 h-8 text-[#2D5BFF]" />
-                            </div>
-                            <h2 className="text-4xl font-bold mb-3 tracking-tight font-heading text-[#0F172A]">
-                                Launch a new security scan
-                            </h2>
-                            <p className="text-[#64748B] text-sm font-medium mb-10 leading-relaxed capitalize">
-                                Scan for SQL injection, XSS, and security misconfigurations in minutes with XGBoost-powered analysis.
-                            </p>
+  if (authLoading) {
+    return <PageLoader text="Syncing Security Cloud..." />;
+  }
 
-                            <form onSubmit={startScan} className="relative flex items-center group">
-                                <div className="absolute left-5 text-[#64748B] group-focus-within:text-[#2D5BFF] transition-colors duration-200">
-                                    <Globe className="w-5 h-5" />
-                                </div>
-                                <input
-                                    type="text"
-                                    value={url}
-                                    onChange={(e) => setUrl(e.target.value)}
-                                    placeholder="https://your-website.com"
-                                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl pl-12 pr-40 py-5 text-[16px] font-medium soft-shadow focus:outline-none focus:ring-4 focus:ring-[#2D5BFF]/10 focus:border-[#2D5BFF] focus:bg-white transition-all duration-200"
-                                />
-                                <div className="absolute right-2 px-1">
-                                    <Button
-                                        type="submit"
-                                        disabled={!url}
-                                        className="bg-[#2D5BFF] hover:bg-[#1D4ED8] text-white px-8 rounded-xl h-12 font-bold soft-shadow transition-all duration-200 active:scale-95 disabled:opacity-50"
-                                    >
-                                        Scan Now
-                                    </Button>
-                                </div>
-                            </form>
-                            <div className="mt-6 flex items-center justify-center gap-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                                <div className="flex items-center gap-1.5"><Shield className="w-3 h-3 text-emerald-500" /> Safe Processing</div>
-                                <div className="flex items-center gap-1.5"><Shield className="w-3 h-3 text-emerald-500" /> No SQL Injection</div>
-                                <div className="flex items-center gap-1.5"><Shield className="w-3 h-3 text-emerald-500" /> Header Checks</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
+  return (
+    <div className="flex min-h-screen bg-[#f2f4f7] dark:bg-[#0a0a0b] font-sans overflow-hidden transition-colors duration-300">
+      <Sidebar showNewScan={false} />
 
-            <footer className="py-12 text-center bg-white border-t border-slate-100">
-                <div className="max-w-[800px] mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6 opacity-60">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em]">
-                        Arhmora AI Website Scanner // v1.2.0-stable
-                    </p>
-                    <div className="flex items-center gap-8 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        <a href="#" className="hover:text-slate-900 transition-colors">Documentation</a>
-                        <a href="#" className="hover:text-slate-900 transition-colors">Privacy</a>
-                        <a href="#" className="hover:text-slate-900 transition-colors">Support</a>
-                    </div>
-                </div>
-            </footer>
+      <main className="flex-1 ml-[280px] flex flex-col h-screen relative">
+        {/* Centered Greeting Section */}
+        <div className="flex-1 flex flex-col items-center justify-center p-12 text-center animate-in fade-in duration-1000 -mt-20">
+            <div className="w-20 h-20 bg-[#1153ed]/10 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center mb-10 border border-[#1153ed]/20 dark:border-blue-800/30 shadow-sm">
+                <Shield className="w-10 h-10 text-[#1153ed] dark:text-blue-400" />
+            </div>
+            <p className="text-[#1153ed] dark:text-blue-400 text-[11px] font-black uppercase tracking-[0.3em] mb-6">Protocol: Advanced Scanning</p>
+            <h1 className="text-5xl md:text-6xl font-bold text-[#131415] dark:text-white leading-tight tracking-tight max-w-3xl">
+                Ready to secure your <span className="text-[#1153ed] dark:text-blue-400">Digital Assets?</span>
+            </h1>
+            <p className="text-[#767a8c] dark:text-[#94a3b8] mt-8 font-medium max-w-xl text-lg leading-relaxed">
+                Enter the target URL below to launch an AI-powered vulnerability audit. 
+                Our neural engines will scan for SQLi, XSS, and misconfigurations.
+            </p>
         </div>
-    );
+
+        {/* Bottom Input Area (ChatGPT style) */}
+        <div className="max-w-4xl w-full mx-auto p-12 pb-16 pt-0">
+            <form onSubmit={startScan} className="relative group">
+                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-[#767a8c] dark:text-[#94a3b8] group-focus-within:text-[#1153ed] dark:group-focus-within:text-blue-400 transition-colors">
+                    <Globe size={20} />
+                </div>
+                
+                <input
+                    type="text"
+                    value={url}
+                    onChange={(e) => { setUrl(e.target.value); setUrlError(""); }}
+                    placeholder="https://your-target-url.com"
+                    className={cn(
+                        "w-full bg-white dark:bg-[#131415] border border-[#eaecf0] dark:border-[#2a2b2c] rounded-[24px] pl-16 pr-44 py-6 text-[16px] font-medium shadow-2xl dark:shadow-none focus:outline-none focus:ring-4 focus:ring-[#1153ed]/5 focus:border-[#1153ed] dark:focus:border-blue-500 text-[#131415] dark:text-white transition-all duration-300",
+                        urlError && "border-red-400 focus:ring-red-500/5 focus:border-red-400 dark:border-red-500"
+                    )}
+                />
+
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                    {url && (
+                        <button 
+                            type="button" 
+                            onClick={() => setUrl("")}
+                            className="p-2 text-[#767a8c] dark:text-[#94a3b8] hover:text-[#131415] dark:hover:text-white transition-colors"
+                        >
+                            <Search size={18} />
+                        </button>
+                    )}
+                    <button
+                        type="submit"
+                        disabled={!url}
+                        className="bg-[#1153ed] dark:bg-blue-600 hover:bg-[#0044e6] dark:hover:bg-blue-500 text-white px-8 py-3.5 rounded-2xl font-bold text-sm shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        Start Scan
+                        <ArrowUpRight size={18} />
+                    </button>
+                </div>
+            </form>
+
+            {urlError && (
+                <p className="mt-4 text-[13px] text-red-500 font-bold text-center flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                    {urlError}
+                </p>
+            )}
+
+
+        </div>
+      </main>
+    </div>
+  );
 }

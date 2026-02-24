@@ -2,11 +2,11 @@
 
 from .tasks import run_web_scan
 
-from .scanner.crawler import Crawler
-from .scanner.scanners import VulnerabilityScanner
-from .scanner.report_builder import ReportBuilder
-from .scanner.pdf_generator import generate_pdf_report
+from .tasks import run_web_scan
+
+from .scanner.report_builder import generate_ai_report_option_a as generate_ai_report
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -147,10 +147,11 @@ class LogoutView(APIView):
             }, status=status.HTTP_200_OK)
 
         except TokenError:
+            # Token might be already blacklisted or expired, consider logout successful
             return Response({
-                'success': False,
-                'message': 'Invalid token'
-            }, status=status.HTTP_400_BAD_REQUEST)
+                'success': True,
+                'message': 'Logged out (token already invalid)'
+            }, status=status.HTTP_200_OK)
 
 
 class UserView(generics.RetrieveUpdateAPIView):
@@ -726,9 +727,10 @@ class ScanResultView(generics.RetrieveAPIView):
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
+        data = serializer.data
         return Response({
             'success': True,
-            'data': serializer.data
+            'data': data
         })
 
 
@@ -795,6 +797,8 @@ class ScanDashboardStatsView(APIView):
             'success': True,
             'data': {
                 'risk_score': risk_score,
+                'total_scans': ScanHistory.objects.filter(user=user, status='Completed').count(),
+                'vulnerabilities_count': active_findings.count(),
                 'counts': {
                     'High': high_count,
                     'Medium': medium_count,
@@ -808,31 +812,57 @@ class ScanDashboardStatsView(APIView):
         })
 
 
+class AIReportGenerateView(APIView):
+    """
+    Trigger the AI-driven HTML -> PDF report generation.
+    Returns the task status/success.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, scan_id):
+        # In a real heavy-load system, this should be a Celery task.
+        # But for ARMORA v2, we compute it on-request as per user's modular system request.
+        output_path, error = generate_ai_report(scan_id)
+        
+        if error:
+            return Response({"success": False, "message": error}, status=status.HTTP_400_BAD_REQUEST)
+            
+        return Response({
+            "success": True, 
+            "message": "Report generated successfully.",
+            "data": {"report_path": output_path}
+        })
+
+
 class DownloadReportView(APIView):
     """
-    Download scan report as a styled PDF.
+    Download the generated AI security report.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, scan_id):
         try:
-            scan = ScanHistory.objects.get(id=scan_id, user=request.user)
+            # First verify scan exists and belongs to user
+            try:
+                ScanHistory.objects.get(id=scan_id, user=request.user)
+            except ScanHistory.DoesNotExist:
+                return Response({"error": "Scan result not found or access denied."}, status=404)
 
-            pdf_buffer = generate_pdf_report(scan)
+            output_path, error = generate_ai_report(scan_id)
+            
+            if error:
+                 return Response({"error": error, "message": "Failed to generate report."}, status=400)
 
-            response = HttpResponse(
-                pdf_buffer.getvalue(),
-                content_type='application/pdf'
-            )
+            from django.http import FileResponse
+            # Using absolute path for safety
+            if not os.path.exists(output_path):
+                 return Response({"error": "Generated PDF file disappeared from storage."}, status=500)
 
-            response['Content-Disposition'] = (
-                f'attachment; filename="arhmora_report_{scan_id}.pdf"'
-            )
-
+            response = FileResponse(open(output_path, 'rb'), content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="ARMORA_Report_{scan_id}.pdf"'
             return response
 
-        except ScanHistory.DoesNotExist:
-            return Response(
-                {"error": "Scan not found"},
-                status=404
-            )
+        except Exception as e:
+            logger.exception(f"PDF download error for scan {scan_id}")
+            return Response({"error": str(e)}, status=500)
+

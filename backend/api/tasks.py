@@ -2,157 +2,99 @@ import logging
 from celery import shared_task
 from django.contrib.auth.models import User
 from .models import ScanHistory, ScanFinding
-from .scanner.crawler import Crawler
-from .scanner.scanners import VulnerabilityScanner
+from .scanner.smart_crawler import SmartCrawler
+from .scanner.scanner import ArmoraScanner
 
 logger = logging.getLogger(__name__)
 
+
 @shared_task(bind=True)
 def run_web_scan(self, scan_history_id, target_url):
+    """
+    Armora v2 — Async scan task.
+
+    Flow:
+    1. Crawl the target.
+    2. Run ArmoraScanner (Smart Detection Engine + Gemini Explainer).
+    3. Save findings to the database.
+    4. Mark scan as completed.
+    """
     try:
         scan_history = ScanHistory.objects.get(id=scan_history_id)
         scan_history.task_id = self.request.id
         scan_history.save()
 
-        # 1. Initialize and run Crawler
-        crawler = Crawler(target_url, max_pages=20)
+        # 1. Crawl (Playwright for SPAs, falls back to static crawler)
+        scan_history.current_step = "Crawling Target Endpoints..."
+        scan_history.save()
+        crawler = SmartCrawler(target_url, max_pages=10)
         crawled_data = crawler.crawl()
 
-        # 2. Initialize and run Vulnerability Scanner
-        scanner = VulnerabilityScanner(target_url)
-        raw_findings = scanner.run_scans(crawled_data)
-        
-        # 3. Deduplicate findings
-        from .scanner.deduplication import deduplicate_findings
-        deduplicated_result = deduplicate_findings(
-            raw_findings, 
-            crawled_data.get('visited_urls', [])
-        )
-        
-        vulnerabilities = deduplicated_result['vulnerabilities']
-        summary = deduplicated_result['scan_summary']
-        logger.info(f"Scan summary: {summary}")
-
-        # 4. Save DEDUPLICATED findings to database
-        created_finding_ids = []
-        for vuln in vulnerabilities:
-            # Construct rich evidence string with all affected endpoints
-            evidence_summary = [
-                f"### Root Cause\n{vuln['root_cause']}\n",
-                f"### Affected Endpoints ({vuln['occurrences']})",
-                *[f"- {ep}" for ep in vuln['affected_endpoints'][:10]],
-            ]
-            if len(vuln['affected_endpoints']) > 10:
-                evidence_summary.append(f"... and {len(vuln['affected_endpoints']) - 10} more")
-            
-            # Add primary evidence details
-            if vuln['evidence']:
-                primary = vuln['evidence'][0]
-                evidence_summary.extend([
-                    f"\n### Evidence (Primary: {primary['endpoint']})",
-                    f"Payload: `{primary['payload']}`",
-                    f"Response: `{primary.get('response', '')[:200]}`"
-                ])
-                
-            full_evidence = "\n".join(evidence_summary)
-
-            # Use primary endpoint for the record
-            primary_endpoint = vuln['evidence'][0]['full_url'] if vuln['evidence'] else target_url
-
-            scan_finding = ScanFinding.objects.create(
-                scan=scan_history,
-                v_type=vuln['type'],
-                severity=vuln['severity'],
-                affected_url=primary_endpoint,
-                evidence=full_evidence,
-                remediation=vuln['remediation'],
-                remediation_simple=vuln.get('remediation_simple', ''),
-                remediation_technical=vuln.get('remediation_technical', ''),
-                risk_score=vuln.get('risk', 0),
-                priority_rank=0, # Calculated later if needed
-                endpoint_sensitivity='public', # Default/Assumed
-                # Store max info
-                total_confidence=int(vuln['confidence']),
-                classification='likely', # Default for AI/Rule matches
-                validation_status='pending',
-                detection_method=vuln['detection_method'],
-                # Store structured data if JSON field available, else relying on text evidence
-            )
-            created_finding_ids.append(scan_finding.id)
-
-        # 5. Trigger async validation for each deduplicated finding
-        for finding_id in created_finding_ids:
-            validate_finding.delay(finding_id)
-
-        # 6. Update scan status
-        scan_history.status = 'Completed'
+        # 2. Scan (Layer 1 + Layer 2)
+        scan_history.current_step = "Analyzing HTTP Headers & Security Controls..."
         scan_history.save()
-        
-        return f"Scan {scan_history_id} completed: {len(vulnerabilities)} unique vulnerabilities (from {len(raw_findings)} raw findings)"
+        scanner = ArmoraScanner(target_url)
+        report = scanner.run(crawled_data)
+        findings = report.get("findings", [])
+
+        # 3. Save findings
+        scan_history.current_step = "Processing Vulnerability Intelligence..."
+        scan_history.save()
+        for finding in findings:
+            evidence_text = finding.get("evidence_text", "")
+            explanation = finding.get("explanation", {})
+
+            # Build remediation fields
+            remediation = finding.get("remediation", "")
+            remediation_simple = finding.get("remediation_simple", remediation)
+            remediation_technical = finding.get("remediation_technical", remediation)
+
+            # Gemini explanation fields (only populated for Confirmed)
+            explanation_simple = explanation.get("executive_summary", "")
+            explanation_technical = explanation.get("technical_explanation", "")
+
+            # If Gemini provided remediation, prefer it
+            if explanation.get("remediation"):
+                remediation_technical = explanation["remediation"]
+
+            # Improved confidence mapping
+            conf_score = finding.get("confidence", 0)
+            
+            ScanFinding.objects.create(
+                scan=scan_history,
+                v_type=finding.get("type", "Unknown"),
+                severity=finding.get("severity", "Medium"),
+                affected_url=finding.get("affected_url", target_url),
+                evidence=evidence_text,
+                remediation=remediation,
+                remediation_simple=remediation_simple,
+                remediation_technical=remediation_technical,
+                explanation_simple=explanation_simple,
+                explanation_technical=explanation_technical,
+                risk_score=conf_score,
+                pattern_confidence=conf_score if conf_score < 100 else 100,
+                exploit_confidence=70 if conf_score >= 70 else 0,
+                response_confidence=20 if (conf_score % 70) >= 20 or conf_score == 20 else 0,
+                total_confidence=conf_score,
+                classification=finding.get("status", "Likely").lower(),
+                detection_method="rule",
+            )
+
+        # 4. Complete
+        scan_history.status = "Completed"
+        scan_history.save()
+
+        return (
+            f"Scan {scan_history_id} completed: "
+            f"{len(findings)} findings"
+        )
 
     except Exception as e:
-        logger.error(f"Async scan failed: {str(e)}")
+        logger.error(f"Async scan failed: {str(e)}", exc_info=True)
         try:
             scan_history = ScanHistory.objects.get(id=scan_history_id)
-            scan_history.status = 'Failed'
+            scan_history.status = "Failed"
             scan_history.save()
-        except:
+        except Exception:
             pass
         return f"Scan {scan_history_id} failed: {str(e)}"
-
-
-@shared_task
-def validate_finding(finding_id: int):
-    """
-    Validate a single finding using controlled payloads.
-    Runs asynchronously after initial detection.
-    """
-    from .scanner.validation_engine import ValidationEngine
-    from .scanner.confidence_engine import MultiFactorConfidenceEngine
-    
-    try:
-        finding = ScanFinding.objects.get(id=finding_id)
-        validator = ValidationEngine()
-        confidence_engine = MultiFactorConfidenceEngine()
-        
-        # Run validation
-        validation_result = validator.validate_finding(finding.v_type, finding.affected_url)
-        
-        # Update exploit confidence based on validation
-        if validation_result:
-            exploit_conf = confidence_engine.calculate_exploit_confidence(
-                finding.v_type, validation_result
-            )
-            finding.exploit_confidence = exploit_conf
-            
-            # Determine validation status
-            if validation_result.get('validated', False):
-                finding.validation_status = 'validated'
-            elif validation_result.get('payload_reflected') or validation_result.get('differential_confirmed'):
-                finding.validation_status = 'partial'
-            else:
-                finding.validation_status = 'failed'
-                # Downgrade severity if not validated and originally high
-                if finding.severity == 'High' and exploit_conf < 10:
-                    finding.severity = 'Medium'
-        
-        # Recalculate total confidence and classification
-        total_conf, classification = confidence_engine.calculate_total_confidence(
-            finding.pattern_confidence,
-            finding.response_confidence,
-            finding.exploit_confidence,
-            finding.context_confidence
-        )
-        finding.total_confidence = total_conf
-        finding.classification = classification
-        finding.save()
-        
-        logger.info(f"Validated finding {finding_id}: {finding.validation_status}, conf={total_conf}%")
-        return f"Validated finding {finding_id}: {finding.validation_status}"
-        
-    except ScanFinding.DoesNotExist:
-        logger.warning(f"Finding {finding_id} not found for validation")
-        return f"Finding {finding_id} not found"
-    except Exception as e:
-        logger.error(f"Validation failed for finding {finding_id}: {e}")
-        return f"Validation failed: {e}"
