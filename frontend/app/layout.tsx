@@ -24,6 +24,9 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export const metadata = {
   title: "Arhmora",
   description: "Next.js with Django Authentication",
+  icons: {
+    icon: "/Group 17.png",
+  },
 };
 
 export default function RootLayout({
