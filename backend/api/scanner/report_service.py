@@ -6,7 +6,7 @@ import logging
 from django.conf import settings
 from api.models import ScanHistory, ScanFinding
 from .ai_report_generator import generate_html_report
-from .pdf_renderer import render_pdf
+from .pdf_renderer import render_report_to_pdf as render_pdf
 
 logger = logging.getLogger(__name__)
 

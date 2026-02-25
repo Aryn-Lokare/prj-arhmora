@@ -87,7 +87,7 @@ function ScanningContent() {
         <div className="flex min-h-screen bg-[#f2f4f7] dark:bg-[#0a0a0b] font-sans overflow-hidden transition-colors duration-300">
             <Sidebar showNewScan={false} />
 
-            <main className="flex-1 ml-[240px] flex flex-col items-center justify-center p-8 relative">
+<main className="flex-1 ml-[280px] flex flex-col items-center justify-center p-8 relative">
                 <style dangerouslySetInnerHTML={{ __html: `
                     @keyframes flicker {
                         0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% {

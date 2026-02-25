@@ -1,7 +1,6 @@
 import json
 import logging
 from django.conf import settings
-from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +13,12 @@ def generate_structured_intelligence(scan_data: dict) -> dict:
     
     if not api_key:
         logger.error("OPENROUTER_API_KEY not set.")
+        return _get_fallback_content(scan_data)
+
+    try:
+        from openai import OpenAI
+    except ImportError:
+        logger.error("openai package not installed.")
         return _get_fallback_content(scan_data)
 
     client = OpenAI(

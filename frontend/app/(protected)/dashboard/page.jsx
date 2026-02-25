@@ -99,7 +99,7 @@ export default function DashboardPage() {
                         icon={Target}
                         className="col-span-12 md:col-span-4 row-span-1 border-[#eaecf0] dark:border-[#2a2b2c] shadow-xl dark:shadow-none group"
                     >
-                        <StatValue value={stats?.total_scans || 126} label="Exploit verified scans" icon={Zap} color="bg-[#1153ed]" />
+                        <StatValue value={stats?.total_scans ?? 0} label="Exploit verified scans" icon={Zap} color="bg-[#1153ed]" />
                     </BentoCard>
 
                     {/* Confirmed Vulnerabilities */}
@@ -108,7 +108,7 @@ export default function DashboardPage() {
                         icon={AlertCircle}
                         className="col-span-12 md:col-span-4 row-span-1 border-[#eaecf0] dark:border-[#2a2b2c] shadow-xl dark:shadow-none group"
                     >
-                        <StatValue value={stats?.vulnerabilities_count || 91} label="Reproducible findings" icon={AlertCircle} color="bg-[#f04438]" />
+                        <StatValue value={stats?.vulnerabilities_count ?? 0} label="Reproducible findings" icon={AlertCircle} color="bg-[#f04438]" />
                     </BentoCard>
 
                     {/* Structured Reports Generated */}
@@ -117,7 +117,7 @@ export default function DashboardPage() {
                         icon={FileText}
                         className="col-span-12 md:col-span-4 row-span-1 border-[#eaecf0] dark:border-[#2a2b2c] shadow-xl dark:shadow-none group"
                     >
-                        <StatValue value={stats?.total_scans ? Math.floor(stats.total_scans * 1.2) : 151} label="Evidence-backed PDFs" icon={FileText} color="bg-[#131415] dark:bg-slate-800" />
+                        <StatValue value={stats?.total_scans ?? 0} label="Evidence-backed PDFs" icon={FileText} color="bg-[#131415] dark:bg-slate-800" />
                     </BentoCard>
 
                 </div>

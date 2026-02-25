@@ -47,7 +47,7 @@ class ArmoraScanner:
     #  Public API                                                        #
     # ------------------------------------------------------------------ #
 
-    def run(self, crawled_data: dict) -> list:
+    def run(self, crawled_data: dict) -> dict:
         """
         Execute the full scan pipeline.
 

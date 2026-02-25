@@ -1,9 +1,6 @@
 # backend/api/views.py
 
 from .tasks import run_web_scan
-
-from .tasks import run_web_scan
-
 from .scanner.report_builder import generate_ai_report_option_a as generate_ai_report
 import logging
 import os
@@ -14,6 +11,7 @@ from rest_framework import status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from django.http import HttpResponse
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -650,8 +648,13 @@ class DisconnectSocialAccountView(APIView):
 class ScanView(APIView):
     """
     API endpoint to initiate a web vulnerability scan asynchronously.
+
+    Rate limited via DRF throttling (ScopedRateThrottle).
+    Configure via settings: REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["scan"].
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "scan"
 
     def post(self, request):
         target_url = request.data.get('target_url')
