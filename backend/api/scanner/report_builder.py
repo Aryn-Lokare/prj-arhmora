@@ -39,6 +39,8 @@ def generate_ai_report_option_a(scan_id):
             } for f in findings
         ]
     }
+    # Build severity lookup so the renderer can access it after AI merge
+    _severity_by_type = {f.v_type: f.severity for f in findings}
 
     # 1. Get AI Intelligence - If no findings, we can skip LLM or send a summary prompt
     if findings.exists():
@@ -52,6 +54,10 @@ def generate_ai_report_option_a(scan_id):
     
     # 2. Merge data for builder
     full_report_data = {**scan_metadata, **ai_data}
+    # Inject severity into AI-generated vulnerability entries
+    for vuln in full_report_data.get('vulnerabilities', []):
+        if 'severity' not in vuln:
+            vuln['severity'] = _severity_by_type.get(vuln.get('title', ''), 'MEDIUM')
     
     # 3. Setup paths
     base_dir = str(settings.BASE_DIR)
@@ -59,7 +65,7 @@ def generate_ai_report_option_a(scan_id):
     reports_dir = os.path.join(media_root, 'reports')
     os.makedirs(reports_dir, exist_ok=True)
     
-    filename = f"ARMORA_Intelligence_{scan.id}_{scan.timestamp.strftime('%Y%H%M%S')}.pdf"
+    filename = f"ARMORA_Intelligence_{scan.id}_{scan.timestamp.strftime('%Y%m%d_%H%M%S')}.pdf"
     output_path = os.path.join(reports_dir, filename)
     
     # 4. Render

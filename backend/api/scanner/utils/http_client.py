@@ -33,18 +33,20 @@ class HttpClient:
     def __init__(self, timeout: int = REQUEST_TIMEOUT, verify_ssl: bool = False, session=None):
         self.timeout = timeout
         self.verify_ssl = verify_ssl
+        self._owns_session = session is None
         self.session = session or sync_requests.Session()
         
-        # Optimize connection pool for high concurrency (20+ workers)
-        adapter = sync_requests.adapters.HTTPAdapter(
-            pool_connections=50,
-            pool_maxsize=50,
-            max_retries=1
-        )
-        self.session.mount("http://", adapter)
-        self.session.mount("https://", adapter)
+        # Only configure adapters/SSL on sessions we own (not shared ones)
+        if self._owns_session:
+            adapter = sync_requests.adapters.HTTPAdapter(
+                pool_connections=50,
+                pool_maxsize=50,
+                max_retries=1
+            )
+            self.session.mount("http://", adapter)
+            self.session.mount("https://", adapter)
+            self.session.verify = verify_ssl
 
-        self.session.verify = verify_ssl
         # Suppress InsecureRequestWarning when verify_ssl is False
         if not verify_ssl:
             import urllib3

@@ -76,7 +76,7 @@ def run_web_scan(self, scan_history_id, target_url):
                 exploit_confidence=70 if conf_score >= 70 else 0,
                 response_confidence=20 if (conf_score % 70) >= 20 or conf_score == 20 else 0,
                 total_confidence=conf_score,
-                classification=finding.get("status", "Likely").lower(),
+                classification=_map_status_to_classification(finding.get("status", "Likely")),
                 detection_method="rule",
             )
 
@@ -98,3 +98,13 @@ def run_web_scan(self, scan_history_id, target_url):
         except Exception:
             pass
         return f"Scan {scan_history_id} failed: {str(e)}"
+
+
+def _map_status_to_classification(status: str) -> str:
+    """Map scanner status values to valid ScanFinding.classification choices."""
+    mapping = {
+        'confirmed': 'confirmed',
+        'likely': 'likely',
+        'discard': 'suspicious',
+    }
+    return mapping.get(status.lower(), 'suspicious')

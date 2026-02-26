@@ -35,7 +35,6 @@ class SmartDetectionEngine:
 
     def __init__(self):
         self.prefilter = PreFilter()
-        self.http = HttpClient()
         self.detector_classes = [
             SQLiDetector,
             XSSDetector,
@@ -44,8 +43,8 @@ class SmartDetectionEngine:
             RCEDetector,
         ]
         # Sharing one session across all URLs and detectors enables massive connection pooling
-        shared_session = HttpClient().session
-        self.session_client = HttpClient(session=shared_session)
+        self._shared_client = HttpClient()
+        self._shared_session = self._shared_client.session
 
 
     def scan(self, urls: list, forms: list = None, intelligence=None) -> list:
@@ -101,7 +100,7 @@ class SmartDetectionEngine:
         findings = []
 
         # Each thread gets its own detector instances but shares the SAME HTTP session
-        detectors = [cls(session=self.session_client.session) for cls in self.detector_classes]
+        detectors = [cls(session=self._shared_session) for cls in self.detector_classes]
         if intelligence:
             for d in detectors:
                 d.intelligence = intelligence
@@ -147,7 +146,7 @@ class SmartDetectionEngine:
         # Even without params, still run SSRF detector on the URL
         if not get_params:
             try:
-                ssrf = SSRFDetector()
+                ssrf = SSRFDetector(session=self._shared_session)
                 for f in ssrf.detect(base_url, {}):
                     f["affected_url"] = url
                     findings.append(f)

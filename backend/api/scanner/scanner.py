@@ -44,7 +44,7 @@ class ArmoraScanner:
         self.intelligence = DecisionEngine(target_url)
 
    
-    def run(self, crawled_data: dict) -> list:
+    def run(self, crawled_data: dict) -> dict:
         """
         Execute the full scan pipeline.
 
@@ -53,10 +53,9 @@ class ArmoraScanner:
                 ``visited_urls``, ``forms``, ``params``.
 
         Returns:
-            List of finding dicts, each enriched with:
-            - severity label
-            - remediation text
-            - Gemini explanation (Confirmed only)
+            Dict with keys:
+            - ``findings``: list of enriched finding dicts
+            - ``intelligence``: framework and exploit chain info
         """
         urls = crawled_data.get("visited_urls", [])
         forms = crawled_data.get("forms", [])
@@ -111,8 +110,7 @@ class ArmoraScanner:
                 "exploit_chain": exploit_chain_summary
             }
         }
-        return report # Note: This changes the return type from list to dict. 
-                      # I need to check if this breaks anything.
+        return report
 
    
     def _run_basic_checks(self, url: str) -> tuple:

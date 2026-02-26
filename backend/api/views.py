@@ -62,7 +62,7 @@ class RegisterView(generics.CreateAPIView):
         try:
             send_verification_email(user, verification_token.token)
         except Exception as e:
-            print(f"Error sending verification email: {e}")
+            logger.warning(f"Error sending verification email: {e}")
 
         refresh = RefreshToken.for_user(user)
 
@@ -423,7 +423,7 @@ class ResetPasswordView(APIView):
         try:
             send_password_changed_email(user)
         except Exception as e:
-            print(f"Error sending password changed email: {e}")
+            logger.warning(f"Error sending password changed email: {e}")
 
         return Response({
             'success': True,
@@ -498,7 +498,7 @@ class GoogleAuthView(APIView):
             except Exception as e:
                 return Response({
                     'success': False,
-                    'message': f'Failed to verify access token: {str(e)}'
+                    'message': 'Failed to verify Google access token'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         if not email:
@@ -581,9 +581,10 @@ class GoogleAuthView(APIView):
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
+            logger.exception("Google authentication failed")
             return Response({
                 'success': False,
-                'message': f'Google authentication failed: {str(e)}'
+                'message': 'Google authentication failed. Please try again.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -670,6 +671,25 @@ class ScanView(APIView):
                 'success': False,
                 'message': 'Invalid URL format'
             }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Block scanning of internal/private targets
+        from urllib.parse import urlparse
+        import socket
+        try:
+            hostname = urlparse(target_url).hostname
+            if hostname:
+                ip = socket.gethostbyname(hostname)
+                parts = ip.split('.')
+                first, second = int(parts[0]), int(parts[1])
+                if (first == 127 or first == 10 or first == 0 or
+                    (first == 172 and 16 <= second <= 31) or
+                    (first == 192 and second == 168)):
+                    return Response({
+                        'success': False,
+                        'message': 'Scanning internal/private addresses is not allowed'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception:
+            pass  # DNS resolution failure is OK, scanner will handle it
 
         try:
             # 1. Create ScanHistory record
@@ -861,7 +881,8 @@ class DownloadReportView(APIView):
             if not os.path.exists(output_path):
                  return Response({"error": "Generated PDF file disappeared from storage."}, status=500)
 
-            response = FileResponse(open(output_path, 'rb'), content_type='application/pdf')
+            file_handle = open(output_path, 'rb')
+            response = FileResponse(file_handle, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="ARMORA_Report_{scan_id}.pdf"'
             return response
 

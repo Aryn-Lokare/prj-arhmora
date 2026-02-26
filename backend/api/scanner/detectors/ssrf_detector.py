@@ -79,7 +79,7 @@ class SSRFDetector:
             if not hostname:
                 return None
             ip = socket.gethostbyname(hostname)
-            if ip.startswith(("127.", "10.", "172.16.", "192.168.", "0.")):
+            if self._is_private_ip(ip):
                 confidence = calculate_confidence(
                     exploit_success=True,
                     strong_signature=True,
@@ -99,6 +99,28 @@ class SSRFDetector:
         except Exception:
             pass
         return None
+
+    @staticmethod
+    def _is_private_ip(ip: str) -> bool:
+        """Check if IP is in a private/reserved range (RFC 1918 + loopback)."""
+        parts = ip.split('.')
+        if len(parts) != 4:
+            return False
+        try:
+            first, second = int(parts[0]), int(parts[1])
+        except ValueError:
+            return False
+        if first == 127:  # Loopback
+            return True
+        if first == 10:  # 10.0.0.0/8
+            return True
+        if first == 172 and 16 <= second <= 31:  # 172.16.0.0/12
+            return True
+        if first == 192 and second == 168:  # 192.168.0.0/16
+            return True
+        if first == 0:  # 0.0.0.0/8
+            return True
+        return False
 
     def _test_parameter(self, url: str, all_params: dict, param: str):
         # 1. Baseline

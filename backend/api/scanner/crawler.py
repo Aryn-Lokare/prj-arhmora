@@ -1,7 +1,11 @@
+import logging
+import urllib3
+
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
-import logging
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
