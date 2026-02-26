@@ -43,11 +43,8 @@ class ArmoraScanner:
         self.explainer = GeminiExplainer()
         self.intelligence = DecisionEngine(target_url)
 
-    # ------------------------------------------------------------------ #
-    #  Public API                                                        #
-    # ------------------------------------------------------------------ #
-
-    def run(self, crawled_data: dict) -> dict:
+   
+    def run(self, crawled_data: dict) -> list:
         """
         Execute the full scan pipeline.
 
@@ -117,10 +114,7 @@ class ArmoraScanner:
         return report # Note: This changes the return type from list to dict. 
                       # I need to check if this breaks anything.
 
-    # ------------------------------------------------------------------ #
-    #  Basic security posture checks                                     #
-    # ------------------------------------------------------------------ #
-
+   
     def _run_basic_checks(self, url: str) -> tuple:
         """
         Non-parameter-based checks: security headers, HTTPS, SSRF risk.
@@ -205,9 +199,7 @@ class ArmoraScanner:
 
         return findings, last_resp
 
-    # ------------------------------------------------------------------ #
-    #  Finding enrichment                                                #
-    # ------------------------------------------------------------------ #
+   
 
     @staticmethod
     def _enrich_finding(finding: dict) -> dict:
@@ -282,9 +274,7 @@ class ArmoraScanner:
 
         return finding
 
-    # ------------------------------------------------------------------ #
-    #  Gemini Explainer integration (Layer 2)                            #
-    # ------------------------------------------------------------------ #
+   
 
     def _attach_gemini_explanations(self, confirmed: list):
         """Call Gemini only for *confirmed* findings."""

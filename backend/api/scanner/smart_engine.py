@@ -47,9 +47,6 @@ class SmartDetectionEngine:
         shared_session = HttpClient().session
         self.session_client = HttpClient(session=shared_session)
 
-    # ------------------------------------------------------------------ #
-    #  Public API                                                        #
-    # ------------------------------------------------------------------ #
 
     def scan(self, urls: list, forms: list = None, intelligence=None) -> list:
         """
@@ -98,10 +95,6 @@ class SmartDetectionEngine:
             f"from {len(scannable_urls)} URLs"
         )
         return unique_findings
-
-    # ------------------------------------------------------------------ #
-    #  Per-URL scan (runs in thread)                                     #
-    # ------------------------------------------------------------------ #
 
     def _scan_url(self, url: str, forms: list, intelligence=None) -> list:
         """Scan a single URL with all detectors. Safe to call from a thread."""
@@ -163,9 +156,7 @@ class SmartDetectionEngine:
 
         return findings
 
-    # ------------------------------------------------------------------ #
-    #  Helpers                                                           #
-    # ------------------------------------------------------------------ #
+   
 
     @staticmethod
     def _forms_for_url(url: str, forms: list) -> list:
