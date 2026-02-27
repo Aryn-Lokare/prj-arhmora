@@ -98,8 +98,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': config('DB_NAME', default='arhmora_db'),
-        'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default=''),
+        'USER': config('DB_USER', default='arhmora-testing'),
+        'PASSWORD': config('DB_PASSWORD', default='aryansl@1314'),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
     }

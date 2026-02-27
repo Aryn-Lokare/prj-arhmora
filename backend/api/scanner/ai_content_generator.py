@@ -39,6 +39,7 @@ def generate_structured_intelligence(scan_data: dict) -> dict:
                 {"role": "user", "content": prompt}
             ],
             temperature=0.1,
+            max_tokens=4000,
             timeout=120,
         )
         

@@ -37,7 +37,12 @@ function ScanningContent() {
                 }
             } catch (err) {
                 console.error("Scan initiation failed:", err);
-                setError("Text has failed to generate result");
+                const backendMsg = err.response?.data?.message;
+                if (backendMsg) {
+                    setError(backendMsg);
+                } else {
+                    setError("Failed to connect to the scanning engine");
+                }
             }
         };
 

@@ -18,19 +18,19 @@ const showcaseItems = [
     {
         title: "Deep Scan View",
         description: "Inspect payload used, response differences, and verification logic behind each detection.",
-        image: "/WhatsApp Image 2026-02-22 at 12.53.16 PM (2).jpeg",
+        image: "/ss-3.jpeg",
         side: "right"
     },
     {
         title: "Hacker's View Section",
         description: "See What Attackers Can Actually Exploit. Not simulated risk. Not anomaly flags. Only vulnerabilities that respond to real exploit attempts.",
-        image: "/WhatsApp Image 2026-02-22 at 12.53.16 PM (1).jpeg",
+        image: "/ss-1.jpeg",
         side: "left"
     },
     {
         title: "Forensic Deep Scan",
         description: "Evidence You Can Reproduce: Payload executed, Baseline vs injected comparison, Server response differences, Attack signature evidence.",
-        image: "/WhatsApp Image 2026-02-22 at 12.53.16 PM.jpeg",
+        image: "/ss-2jpeg",
         side: "right"
     }
 ];
@@ -94,7 +94,6 @@ export function LandingShowcase() {
                                         {item.title}
                                     </h4>
                                     <p className="text-gray-600 text-lg md:text-xl leading-relaxed font-body">
-/
                                         {item.description}
                                     </p>
                                 </div>

@@ -681,14 +681,22 @@ class ScanView(APIView):
                 ip = socket.gethostbyname(hostname)
                 parts = ip.split('.')
                 first, second = int(parts[0]), int(parts[1])
-                if (first == 127 or first == 10 or first == 0 or
-                    (first == 172 and 16 <= second <= 31) or
-                    (first == 192 and second == 168)):
+                
+                # Check for private IP ranges
+                is_internal = (first == 127 or first == 10 or first == 0 or
+                              (first == 172 and 16 <= second <= 31) or
+                              (first == 192 and second == 168))
+                
+                # In non-DEBUG mode, block internal IPs. In DEBUG mode, allow them but maybe log a warning.
+                if is_internal and not settings.DEBUG:
                     return Response({
                         'success': False,
-                        'message': 'Scanning internal/private addresses is not allowed'
+                        'message': 'Scanning internal/private addresses is not allowed in production'
                     }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception:
+                elif is_internal and settings.DEBUG:
+                    logger.info(f"Allowing internal scan of {target_url} ({ip}) because DEBUG=True")
+        except Exception as e:
+            logger.warning(f"DNS resolution for check failed: {e}")
             pass  # DNS resolution failure is OK, scanner will handle it
 
         try:
