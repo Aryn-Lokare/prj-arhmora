@@ -104,9 +104,13 @@ class ScanHistory(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     task_id = models.CharField(max_length=255, blank=True, null=True)
     current_step = models.CharField(max_length=255, default='Initializing...')
+    
+    # Pillar 3: Observability
+    last_heartbeat = models.DateTimeField(default=timezone.now, null=True, blank=True)
+    worker_name = models.CharField(max_length=255, blank=True, null=True)
 
     # AI Exploitability & Fix Prioritization Engine output (cached post-scan)
-    ai_priority_result = models.JSONField(default=dict, blank=True)
+    ai_priority_result = models.JSONField(default=dict, blank=True, null=True)
 
     class Meta:
         ordering = ['-timestamp']

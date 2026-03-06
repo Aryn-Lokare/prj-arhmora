@@ -38,18 +38,12 @@ class LFIDetector:
         self.http = HttpClient(session=session)
         self.analyzer = ResponseAnalyzer()
 
-    def detect(self, url: str, params: dict) -> list:
-        """
-        Test file/path parameters for LFI.
-
-        Returns:
-            List of structured finding dicts (only Confirmed / Likely).
-        """
+    def detect(self, url: str, params: dict, extra_payloads: list = None) -> list:
         findings = []
         for param, original_value in params.items():
             if not self._is_file_param(param, original_value):
                 continue
-            result = self._test_parameter(url, params, param)
+            result = self._test_parameter(url, params, param, extra_payloads)
             if result:
                 findings.append(result)
         return findings
@@ -58,25 +52,28 @@ class LFIDetector:
         """Heuristic: does this param likely accept a file path?"""
         if name.lower() in FILE_PARAM_HINTS:
             return True
-        if "/" in value or "\\" in value or value.endswith((".php", ".html", ".txt", ".log", ".conf")):
+        if "/" in str(value) or "\\" in str(value) or str(value).endswith((".php", ".html", ".txt", ".log", ".conf")):
             return True
         return False
 
-    def _test_parameter(self, url: str, all_params: dict, param: str):
+    def _test_parameter(self, url: str, all_params: dict, param: str, extra_payloads: list = None):
         # 1. Baseline
         baseline = self.http.get(url, params=all_params)
         if baseline["status_code"] == 0:
             return None
 
         # 2. Fire all LFI payloads concurrently
-        result_holder = []
+        payloads_to_test = list(LFI_PAYLOADS)
+        if extra_payloads:
+            payloads_to_test.extend(extra_payloads)
 
+        result_holder = []
         with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as executor:
             futures = {
                 executor.submit(
                     self._test_single_payload, url, all_params, param, payload, baseline
                 ): payload
-                for payload in LFI_PAYLOADS
+                for payload in payloads_to_test
             }
             for future in as_completed(futures):
                 try:

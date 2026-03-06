@@ -13,7 +13,7 @@ No ML. No anomaly scoring.
 """
 
 import os
-import re
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,11 +21,8 @@ logger = logging.getLogger(__name__)
 
 class GeminiExplainer:
     """
-    Uses OpenAI API to generate contextual explanations
+    Uses AI (Gemini/GPT via OpenRouter) to generate contextual explanations
     for **Confirmed** vulnerability findings.
-
-    Class name kept as GeminiExplainer for backward compatibility
-    with scanner.py imports.
     """
 
     def __init__(self):
@@ -49,103 +46,66 @@ class GeminiExplainer:
         else:
             logger.info("OPENROUTER_API_KEY not set — AI explanations disabled.")
 
-    # ------------------------------------------------------------------ #
-    #  Public API                                                        #
-    # ------------------------------------------------------------------ #
-
     def explain(self, vuln_type: str, url: str, severity: str, evidence: str) -> dict:
         """
         Generate a structured explanation for a Confirmed finding.
-
-        Returns:
-            {
-                "executive_summary": str,
-                "technical_explanation": str,
-                "remediation": str,
-            }
         """
         if not self.enabled:
             return self.fallback_explanation(vuln_type)
 
-        prompt = self._build_prompt(vuln_type, url, severity, evidence)
+        # 1. Truncate evidence to save tokens (limit to ~4k chars)
+        safe_evidence = (evidence[:4000] + "..[truncated]") if len(evidence) > 4000 else evidence
 
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
+                response_format={"type": "json_object"},
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a senior application-security engineer providing vulnerability analysis.",
+                        "content": (
+                            "You are a helpful senior security engineer. Your goal is to explain vulnerabilities in a way that ANYONE can understand, while maintaining professional high quality.\n"
+                            "Rules:\n"
+                            "1. Use simple, non-jargon language for the Executive Summary.\n"
+                            "2. Be extremely precise and 'on-point'—avoid fluff.\n"
+                            "3. Keep descriptions high-quality and actionable.\n"
+                            "4. Output JSON format exactly as follows:\n"
+                            "{\n"
+                            "  \"executive_summary\": \"Precise 2-sentence non-technical risk summary using simple language\",\n"
+                            "  \"technical_explanation\": \"Direct and technical but clear explanation of mechanics\",\n"
+                            "  \"remediation\": \"Actionable steps with simple code examples if applicable\"\n"
+                            "}"
+                        )
                     },
                     {
                         "role": "user",
-                        "content": prompt,
+                        "content": f"Analyze this confirmed finding:\nType: {vuln_type}\nURL: {url}\nSeverity: {severity}\nEvidence: {safe_evidence}"
                     },
                 ],
-                temperature=0.3,
-                max_tokens=1024,
+                temperature=0.2,
+                max_tokens=1000,
             )
-            text = response.choices[0].message.content.strip()
-            if text:
-                return self._parse_response(text)
+            
+            content = response.choices[0].message.content.strip()
+            return self._parse_json_response(content, vuln_type)
+
         except Exception as exc:
-            logger.warning(f"OpenAI API call failed: {exc}. Using fallback.")
+            logger.warning(f"AI Explainer API failed: {exc}. Using fallback.")
 
         return self.fallback_explanation(vuln_type)
 
-    # ------------------------------------------------------------------ #
-    #  Prompt construction                                               #
-    # ------------------------------------------------------------------ #
-
-    @staticmethod
-    def _build_prompt(vuln_type: str, url: str, severity: str, evidence: str) -> str:
-        return (
-            "A confirmed vulnerability has been verified through active exploit testing.\n\n"
-            f"**Vulnerability:** {vuln_type}\n"
-            f"**Affected URL:** {url}\n"
-            f"**Severity:** {severity}\n"
-            f"**Evidence:** {evidence}\n\n"
-            "Provide your analysis in EXACTLY this format:\n\n"
-            "## Executive Summary\n"
-            "[2-3 sentence non-technical summary of the risk for business stakeholders]\n\n"
-            "## Technical Explanation\n"
-            "[Detailed technical explanation of how this vulnerability works, "
-            "what the attacker can achieve, and why the evidence confirms exploitation]\n\n"
-            "## Remediation\n"
-            "[Specific, actionable remediation steps. Include code examples if appropriate. "
-            "Reference the relevant tech stack.]\n"
-        )
-
-    # ------------------------------------------------------------------ #
-    #  Response parsing                                                  #
-    # ------------------------------------------------------------------ #
-
-    @staticmethod
-    def _parse_response(text: str) -> dict:
-        """Parse OpenAI response into the three sections."""
-        result = {
-            "executive_summary": "",
-            "technical_explanation": "",
-            "remediation": "",
-        }
-
-        sections = re.split(r"##\s+", text)
-        for section in sections:
-            section_stripped = section.strip()
-            lower = section_stripped.lower()
-
-            if lower.startswith("executive summary"):
-                result["executive_summary"] = section_stripped.split("\n", 1)[-1].strip()
-            elif lower.startswith("technical explanation"):
-                result["technical_explanation"] = section_stripped.split("\n", 1)[-1].strip()
-            elif lower.startswith("remediation"):
-                result["remediation"] = section_stripped.split("\n", 1)[-1].strip()
-
-        # If parsing failed, use the full text as executive summary
-        if not any(result.values()):
-            result["executive_summary"] = text
-
-        return result
+    def _parse_json_response(self, text: str, vuln_type: str) -> dict:
+        """Parse JSON response with fallback to regex if model hallucinates non-JSON."""
+        try:
+            data = json.loads(text)
+            return {
+                "executive_summary": data.get("executive_summary", ""),
+                "technical_explanation": data.get("technical_explanation", ""),
+                "remediation": data.get("remediation", ""),
+            }
+        except Exception:
+            # Emergency fallback: if it's not JSON, it might be raw text
+            return self.fallback_explanation(vuln_type)
 
     # ------------------------------------------------------------------ #
     #  Fallback (no API key)                                             #

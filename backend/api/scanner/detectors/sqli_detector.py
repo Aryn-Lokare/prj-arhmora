@@ -40,21 +40,14 @@ class SQLiDetector:
     #  Public API                                                        #
     # ------------------------------------------------------------------ #
 
-    def detect(self, url: str, params: dict) -> list:
+    def detect(self, url: str, params: dict, extra_payloads: list = None) -> list:
         """
         Test every parameter in *params* for SQL injection.
-
-        Args:
-            url: Base URL (without query string).
-            params: ``{"param_name": "original_value", ...}``
-
-        Returns:
-            List of structured finding dicts (only Confirmed / Likely).
         """
         findings = []
 
         for param, original_value in params.items():
-            result = self._test_parameter(url, params, param, original_value)
+            result = self._test_parameter(url, params, param, extra_payloads)
             if result:
                 findings.append(result)
 
@@ -64,7 +57,7 @@ class SQLiDetector:
     #  Internals                                                         #
     # ------------------------------------------------------------------ #
 
-    def _test_parameter(self, url: str, all_params: dict, param: str, original_value: str):
+    def _test_parameter(self, url: str, all_params: dict, param: str, extra_payloads: list = None):
         """Inject all payloads concurrently into a parameter and evaluate."""
 
         # 1. Baseline request (shared, done once before concurrent tests)
@@ -73,7 +66,10 @@ class SQLiDetector:
             return None  # Target unreachable
 
         # 2. Fire error-based + time-based payloads concurrently
-        error_payloads = SQLI_PAYLOADS
+        error_payloads = list(SQLI_PAYLOADS)
+        if extra_payloads:
+            error_payloads.extend(extra_payloads)
+            
         time_payloads = SQLI_TIME_PAYLOADS
 
         if hasattr(self, "intelligence") and self.intelligence:

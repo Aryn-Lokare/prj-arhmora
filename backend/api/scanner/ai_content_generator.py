@@ -31,15 +31,23 @@ def generate_structured_intelligence(scan_data: dict) -> dict:
     try:
         response = client.chat.completions.create(
             model=model,
+            response_format={"type": "json_object"},
             messages=[
                 {
                     "role": "system", 
-                    "content": "You are a senior security architect. Return ONLY valid JSON. No backticks, no markdown, no commentary."
+                    "content": (
+                        "You are a helpful senior security architect. Your goal is to generate a premium security report summary that is high-quality, precise, and written in simple language understandable to non-experts.\n"
+                        "Rules:\n"
+                        "1. Avoid jargon in the Executive Summary.\n"
+                        "2. Be concise and 'on-point'.\n"
+                        "3. Use a professional yet simple tone.\n"
+                        "4. Output ONLY valid JSON."
+                    )
                 },
                 {"role": "user", "content": prompt}
             ],
             temperature=0.1,
-            max_tokens=4000,
+            max_tokens=2500,
             timeout=120,
         )
         
@@ -62,25 +70,30 @@ def _build_structured_prompt(scan_data: dict) -> str:
         findings_text += f"\nFinding {idx+1}: {f['v_type']} ({f['severity']}) at {f['affected_url']}\nDescription: {f['explanation_technical']}\n"
 
     return f"""
-Analyze the following security scan findings for {scan_data['target_url']}:
+Analyze the security scan findings for {scan_data['target_url']}:
 {findings_text}
 
-Generate a structured security report in JSON format following this schema exactly:
+Generate a premium security intelligence report in JSON format.
+Requirements for Content:
+1. EXECUTIVE SUMMARY: Use simple language understandable by a CEO or non-technical business owner. Explain the risk precise and accurately.
+2. QUALITY: Descriptions must be professional and high-quality, avoiding 'detectory' jargon.
+3. PRECISION: Be direct. Use short, punchy sentences.
+4. TONE: Professional yet accessible.
+
+JSON Schema:
 {{
-  "executive_summary": "High-level summary for non-technical stakeholders",
-  "overall_risk_analysis": "Summary of total security posture",
+  "executive_summary": "Simple 2-3 sentence summary for non-experts",
+  "overall_risk_analysis": "Precise evaluation of the security posture",
   "vulnerabilities": [
     {{
-      "title": "Specific name of the vulnerability",
-      "technical_explanation": "Technical details of how it works",
-      "risk_analysis": "Technical risk and exploitability",
-      "business_impact": "Explain financial, operational, reputational, and compliance impact. Must be understandable by C-level executives (CEO/CFO). Avoid exaggeration.",
-      "remediation": "Technical and strategic fix instructions"
+      "title": "Clear name of vulnerability",
+      "technical_explanation": "Direct explanation of the mechanics",
+      "risk_analysis": "What is the actual danger?",
+      "business_impact": "Explain financial and operational risk in simple terms for stakeholders",
+      "remediation": "Clear, actionable fix instructions"
     }}
   ]
 }}
-
-Return ONLY valid JSON.
 """
 
 def _get_fallback_content(scan_data: dict) -> dict:

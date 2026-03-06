@@ -701,10 +701,12 @@ class ScanView(APIView):
 
         try:
             # 1. Create ScanHistory record
+            from django.utils import timezone
             scan_history = ScanHistory.objects.create(
                 user=request.user,
                 target_url=target_url,
-                status='Pending'
+                status='Pending',
+                last_heartbeat=timezone.now()
             )
 
             # 2. Trigger async task

@@ -39,58 +39,62 @@ class PreFilter:
     """Gate-keeper that decides which URLs deserve active testing."""
 
     @staticmethod
-    def should_skip(url: str) -> bool:
+    def should_scan(url: str) -> bool:
         """
-        Return ``True`` if *url* should be skipped (static or CDN).
+        Return ``True`` if *url* should be scanned. 
+        Skips static resources and irrelevant directories.
         """
-        parsed = urlparse(url)
-
-        # Skip known CDN hosts
-        if parsed.hostname and parsed.hostname.lower() in CDN_HOSTNAMES:
-            return True
-
-        # Skip static file extensions
-        path_lower = parsed.path.lower()
-        for ext in STATIC_EXTENSIONS:
-            if path_lower.endswith(ext):
-                return True
-
-        return False
+        if not url:
+            return False
+            
+        parsed = urlparse(url.lower())
+        path = parsed.path
+        
+        # 1. Skip Resources
+        skip_extensions = {
+            '.css', '.js', '.png', '.jpg', '.jpeg', '.svg', 
+            '.ico', '.woff', '.ttf', '.map', '.gif', '.pdf',
+            '.woff2', '.eot', '.otf', '.webp', '.avif', '.mp4'
+        }
+        if any(path.endswith(ext) for ext in skip_extensions):
+            return False
+            
+        # 2. Skip Directories
+        skip_dirs = {
+            '/assets/', '/static/', '/images/', '/fonts/', '/media/', '/vendor/'
+        }
+        if any(sd in path for sd in skip_dirs):
+            return False
+            
+        # 3. Skip known CDN hosts
+        if parsed.hostname and parsed.hostname in CDN_HOSTNAMES:
+            return False
+            
+        return True
 
     @staticmethod
     def extract_parameters(url: str, forms: list = None) -> dict:
         """
-        Extract injectable parameters from *url* query string and
-        optional *forms* data (as returned by the Crawler).
-
-        Returns:
-            {
-                "get_params": {"key": "value", ...},
-                "post_params": [
-                    {"action": str, "method": str, "inputs": [{"name": str, "type": str}]}
-                ],
-                "has_injection_vectors": bool,
-            }
+        Extract injectable parameters from GET and POST vectors.
+        Returns: {"url": "...", "parameters": ["id", "q", ...]}
         """
         parsed = urlparse(url)
-        get_params = {}
-        for key, values in parse_qs(parsed.query, keep_blank_values=True).items():
-            get_params[key] = values[0] if values else ""
+        params = set()
+        
+        # GET Params
+        for key in parse_qs(parsed.query).keys():
+            params.add(key)
 
-        post_params = []
+        # POST Params (from forms)
         if forms:
             for form in forms:
                 if form.get("inputs"):
-                    post_params.append({
-                        "action": form.get("action", ""),
-                        "method": form.get("method", "post"),
-                        "inputs": form.get("inputs", []),
-                    })
+                    for inp in form.get("inputs", []):
+                        if inp.get("name"):
+                            params.add(inp["name"])
 
-        has_vectors = bool(get_params) or bool(post_params)
-
+        base_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
         return {
-            "get_params": get_params,
-            "post_params": post_params,
-            "has_injection_vectors": has_vectors,
+            "url": base_url,
+            "parameters": list(params)
         }

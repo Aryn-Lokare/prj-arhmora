@@ -66,7 +66,7 @@ class ArmoraScanner:
         raw_findings = self.engine.scan(urls, forms, intelligence=self.intelligence)
 
         # --- Basic security checks (always run on target URL) ---
-        basic_findings, target_resp = self._run_basic_checks(self.target_url)
+        basic_findings, target_resp = self.run_basic_checks(self.target_url)
         raw_findings.extend(basic_findings)
 
         # Detect Framework using the existing response from basic checks
@@ -78,7 +78,7 @@ class ArmoraScanner:
 
         # --- Enrich each finding ---
         for finding in raw_findings:
-            enriched = self._enrich_finding(finding)
+            enriched = self.enrich_finding(finding)
             findings.append(enriched)
 
         # --- Layer 2: Gemini Explainer (Confirmed only) ---
@@ -93,7 +93,7 @@ class ArmoraScanner:
             
             # Predict chains
             exploit_chain_summary = self.intelligence.analyze_chains(confirmed_findings)
-            self._attach_gemini_explanations(confirmed_findings)
+            self.attach_gemini_explanations(confirmed_findings)
         else:
             logger.info("No confirmed findings — skipping Gemini Explainer.")
 
@@ -113,7 +113,7 @@ class ArmoraScanner:
         return report
 
    
-    def _run_basic_checks(self, url: str) -> tuple:
+    def run_basic_checks(self, url: str) -> tuple:
         """
         Non-parameter-based checks: security headers, HTTPS, SSRF risk.
         Returns (findings_list, last_response_dict).
@@ -200,7 +200,7 @@ class ArmoraScanner:
    
 
     @staticmethod
-    def _enrich_finding(finding: dict) -> dict:
+    def enrich_finding(finding: dict) -> dict:
         """Add severity, remediation text based on finding type."""
         vuln_type = finding.get("type", "")
 
@@ -260,21 +260,24 @@ class ArmoraScanner:
         # Build human-readable evidence string
         evidence_obj = finding.get("evidence", {})
         evidence_parts = []
-        if evidence_obj.get("payload"):
-            evidence_parts.append(f"Payload: {evidence_obj['payload']}")
-        if evidence_obj.get("signatures_matched"):
-            evidence_parts.append(f"Signatures: {', '.join(evidence_obj['signatures_matched'])}")
-        if evidence_obj.get("missing_headers"):
-            evidence_parts.append(f"Missing headers: {', '.join(evidence_obj['missing_headers'])}")
-        if evidence_obj.get("detail"):
-            evidence_parts.append(evidence_obj["detail"])
-        finding["evidence_text"] = " | ".join(evidence_parts) if evidence_parts else str(evidence_obj)
+        if isinstance(evidence_obj, dict):
+            if evidence_obj.get("payload"):
+                evidence_parts.append(f"Payload: {evidence_obj['payload']}")
+            if evidence_obj.get("signatures_matched"):
+                evidence_parts.append(f"Signatures: {', '.join(evidence_obj['signatures_matched'])}")
+            if evidence_obj.get("missing_headers"):
+                evidence_parts.append(f"Missing headers: {', '.join(evidence_obj['missing_headers'])}")
+            if evidence_obj.get("detail"):
+                evidence_parts.append(evidence_obj["detail"])
+            finding["evidence_text"] = " | ".join(evidence_parts) if evidence_parts else str(evidence_obj)
+        else:
+            finding["evidence_text"] = str(evidence_obj)
 
         return finding
 
    
 
-    def _attach_gemini_explanations(self, confirmed: list):
+    def attach_gemini_explanations(self, confirmed: list):
         """Call Gemini only for *confirmed* findings."""
         if not self.explainer.enabled:
             logger.info("Gemini Explainer not available — skipping explanations.")

@@ -50,16 +50,9 @@ class SmartDetectionEngine:
     def scan(self, urls: list, forms: list = None, intelligence=None) -> list:
         """
         Run the full detection pipeline across *urls* concurrently.
-
-        Args:
-            urls: List of crawled URLs (may include query strings).
-            forms: Optional list of discovered forms (Crawler output).
-
-        Returns:
-            List of structured finding dicts.
-            Only ``Confirmed`` and ``Likely`` findings are returned.
+        (Legacy monolithic mode - still works but distributed is preferred).
         """
-        # Filter static/CDN URLs up front before spawning threads
+        # ... logic stays same if called directly ...
         scannable_urls = [
             url for url in urls
             if not self.prefilter.should_skip(url)
@@ -94,6 +87,69 @@ class SmartDetectionEngine:
             f"from {len(scannable_urls)} URLs"
         )
         return unique_findings
+
+    def generate_scan_tasks(self, urls: list, forms: list = None, framework: str = "Unknown") -> list:
+        """
+        Identify all scannable parameters and return a list of task dicts.
+        Includes detected framework for intelligent payload selection.
+        """
+        task_list = []
+        
+        scannable_urls = [
+            url for url in urls
+            if not self.prefilter.should_skip(url)
+        ]
+
+        for url in scannable_urls:
+            url_forms = self._forms_for_url(url, forms) if forms else None
+            param_info = self.prefilter.extract_parameters(url, url_forms)
+            
+            parsed = urlparse(url)
+            base_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+            
+            # 1. GET Param Tasks
+            get_params = param_info.get("get_params", {})
+            if get_params:
+                for cls in self.detector_classes:
+                    task_list.append({
+                        "id": f"{cls.vuln_type}:GET:{url}",
+                        "detector_class": cls.__name__,
+                        "url": base_url,
+                        "params": get_params,
+                        "original_url": url,
+                        "method": "GET",
+                        "framework": framework
+                    })
+            else:
+                # Still check SSRF on headless URL
+                task_list.append({
+                    "id": f"SSRFDetector:HEADLESS:{url}",
+                    "detector_class": "SSRFDetector",
+                    "url": base_url,
+                    "params": {},
+                    "original_url": url,
+                    "method": "GET",
+                    "framework": framework
+                })
+
+            # 2. POST Param Tasks
+            for form in param_info.get("post_params", []):
+                post_data = {inp["name"]: "test" for inp in form.get("inputs", [])}
+                if not post_data:
+                    continue
+                action_url = form.get("action") or base_url
+                for cls in self.detector_classes:
+                    task_list.append({
+                        "id": f"{cls.vuln_type}:POST:{action_url}",
+                        "detector_class": cls.__name__,
+                        "url": action_url,
+                        "params": post_data,
+                        "original_url": action_url,
+                        "method": "POST",
+                        "framework": framework
+                    })
+                    
+        return task_list
 
     def _scan_url(self, url: str, forms: list, intelligence=None) -> list:
         """Scan a single URL with all detectors. Safe to call from a thread."""
@@ -175,3 +231,4 @@ class SmartDetectionEngine:
                 seen.add(key)
                 unique.append(f)
         return unique
+
