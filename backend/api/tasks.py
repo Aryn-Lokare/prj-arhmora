@@ -161,8 +161,8 @@ def _update_heartbeat(scan_history_id):
     try:
         from django.utils import timezone
         ScanHistory.objects.filter(id=scan_history_id).update(last_heartbeat=timezone.now())
-    except:
-        pass
+    except Exception:
+        logger.warning(f"Failed to update heartbeat for scan {scan_history_id}", exc_info=True)
 
 
 def _save_finding(scan_history, finding, target_url):
@@ -184,7 +184,7 @@ def _save_finding(scan_history, finding, target_url):
         risk_score=finding.get("confidence", 0),
         total_confidence=finding.get("confidence", 0),
         classification=_map_status_to_classification(finding.get("status", "Likely")),
-        detection_method="distributed_agent",
+        detection_method="hybrid",
     )
 
 
@@ -193,7 +193,8 @@ def _mark_failed(scan_history_id, error_msg):
         scan_history = ScanHistory.objects.get(id=scan_history_id)
         scan_history.status = "Failed"
         scan_history.save()
-    except: pass
+    except Exception:
+        logger.error(f"Failed to mark scan {scan_history_id} as failed", exc_info=True)
 
 
 def _map_status_to_classification(status: str) -> str:

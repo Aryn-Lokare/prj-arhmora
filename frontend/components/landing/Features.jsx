@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { 
     Cpu, 
     Database, 
@@ -11,6 +11,7 @@ import {
     Scan, 
     ShieldAlert 
 } from "lucide-react";
+import { useState, useCallback } from "react";
 
 const features = [
     {
@@ -69,6 +70,53 @@ const itemVariants = {
     }
 };
 
+function FeatureCard({ feature, index }) {
+    const mouseX = useMotionValue(0);
+    const mouseY = useMotionValue(0);
+
+    const handleMouseMove = useCallback(({ currentTarget, clientX, clientY }) => {
+        const { left, top } = currentTarget.getBoundingClientRect();
+        mouseX.set(clientX - left);
+        mouseY.set(clientY - top);
+    }, [mouseX, mouseY]);
+
+    return (
+        <motion.div 
+            variants={itemVariants}
+            onMouseMove={handleMouseMove}
+            whileHover={{ 
+                scale: 1.02, 
+                translateY: -5,
+                boxShadow: "0 20px 40px rgba(0,0,0,0.05), 0 0 20px rgba(108, 99, 255, 0.05)"
+            }}
+            className="p-10 rounded-[20px] bg-gray-50 border border-gray-100 transition-all duration-300 relative group overflow-hidden"
+        >
+            <motion.div
+                className="pointer-events-none absolute -inset-px rounded-[20px] opacity-0 group-hover:opacity-100 transition duration-300"
+                style={{
+                    background: useTransform(
+                        [mouseX, mouseY],
+                        ([x, y]) => `radial-gradient(400px circle at ${x}px ${y}px, rgba(108, 99, 255, 0.1), transparent 40%)`
+                    )
+                }}
+            />
+            
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#6C63FF]/5 blur-3xl -mr-16 -mt-16 group-hover:bg-[#6C63FF]/10 transition-colors" />
+            
+            <motion.div 
+                className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center mb-8 border border-gray-100 shadow-inner group-hover:shadow-lg transition-all duration-300"
+            >
+                <feature.icon className="w-8 h-8 text-[#6C63FF]" />
+            </motion.div>
+
+            <h4 className="text-2xl font-bold text-[#131415] mb-4 font-heading group-hover:text-[#6C63FF] transition-colors">{feature.title}</h4>
+            <p className="text-gray-600 font-medium leading-relaxed font-body">
+                {feature.description}
+            </p>
+        </motion.div>
+    );
+}
+
 export function LandingFeatures() {
     return (
         <section id="features" className="py-32 px-6 bg-white">
@@ -102,30 +150,7 @@ export function LandingFeatures() {
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
                 >
                     {features.map((feature, index) => (
-                        <motion.div 
-                            key={index} 
-                            variants={itemVariants}
-                            whileHover={{ 
-                                scale: 1.02, 
-                                translateY: -5,
-                                boxShadow: "0 20px 40px rgba(0,0,0,0.05), 0 0 20px rgba(108, 99, 255, 0.05)"
-                            }}
-                            className="p-10 rounded-[20px] bg-gray-50 border border-gray-100 transition-all duration-300 relative group overflow-hidden"
-                        >
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-[#6C63FF]/5 blur-3xl -mr-16 -mt-16 group-hover:bg-[#6C63FF]/10 transition-colors" />
-                            
-                            <motion.div 
-                                className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center mb-8 border border-gray-100 shadow-inner"
-                            >
-                                <feature.icon className="w-8 h-8 text-[#6C63FF]" />
-                            </motion.div>
-
-                            <h4 className="text-2xl font-bold text-[#131415] mb-4 font-heading">{feature.title}</h4>
-                            <p className="text-gray-600 font-medium leading-relaxed font-body">
-/
-                                {feature.description}
-                            </p>
-                        </motion.div>
+                        <FeatureCard key={index} feature={feature} index={index} />
                     ))}
                 </motion.div>
             </div>

@@ -18,6 +18,8 @@ from .views import (
     ResetPasswordView,
     # Google Auth
     GoogleAuthView,
+    SocialAccountsView,
+    DisconnectSocialAccountView,
     # Scanner
     ScanView,
     ScanHistoryView,
@@ -47,6 +49,8 @@ urlpatterns = [
     
     # Google auth endpoint
     path('auth/google/', GoogleAuthView.as_view(), name='google_auth'),
+    path('auth/social-accounts/', SocialAccountsView.as_view(), name='social_accounts'),
+    path('auth/social-accounts/<str:provider>/disconnect/', DisconnectSocialAccountView.as_view(), name='disconnect_social_account'),
     
     # Scanner endpoints
     path('scan/', ScanView.as_view(), name='scan'),

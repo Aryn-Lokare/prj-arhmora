@@ -78,20 +78,31 @@ export function LandingHowItWorks() {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: index * 0.2, duration: 0.8 }}
-                                className="flex flex-col items-center text-center space-y-8"
+                                className="flex flex-col items-center text-center space-y-8 group"
                             >
-                                <div className="relative group">
-                                    <div className="w-32 h-32 rounded-full bg-white border-4 border-gray-50 flex items-center justify-center relative z-10 transition-transform duration-500 group-hover:scale-110 shadow-sm">
+                                <div className="relative">
+                                    <motion.div 
+                                        whileHover={{ scale: 1.1, rotate: 5 }}
+                                        className="w-32 h-32 rounded-full bg-white border-4 border-gray-50 flex items-center justify-center relative z-10 shadow-sm transition-shadow group-hover:shadow-xl"
+                                    >
                                         <step.icon className="w-12 h-12 text-[#6C63FF]" />
-                                        <div className="absolute -top-2 -right-2 w-10 h-10 rounded-full bg-[#6C63FF] flex items-center justify-center text-white font-black text-xs border-4 border-white">
+                                        <motion.div 
+                                            initial={{ scale: 0.8 }}
+                                            whileInView={{ scale: 1 }}
+                                            className="absolute -top-2 -right-2 w-10 h-10 rounded-full bg-[#6C63FF] flex items-center justify-center text-white font-black text-xs border-4 border-white shadow-lg"
+                                        >
                                             {step.step}
-                                        </div>
-                                    </div>
-                                    <div className="absolute inset-0 bg-[#6C63FF]/20 blur-3xl rounded-full scale-0 group-hover:scale-100 transition-transform duration-500" />
+                                        </motion.div>
+                                    </motion.div>
+                                    <motion.div 
+                                        animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
+                                        transition={{ duration: 3, repeat: Infinity }}
+                                        className="absolute inset-0 bg-[#6C63FF] blur-3xl rounded-full -z-10" 
+                                    />
                                 </div>
 
                                 <div className="space-y-4">
-                                    <h4 className="text-2xl font-bold text-[#131415] font-heading uppercase tracking-tight">{step.title}</h4>
+                                    <h4 className="text-2xl font-bold text-[#131415] font-heading uppercase tracking-tight group-hover:text-[#6C63FF] transition-colors">{step.title}</h4>
                                     <p className="text-gray-600 font-medium leading-relaxed font-body max-w-xs mx-auto">
                                         {step.description}
                                     </p>

@@ -63,12 +63,12 @@ export function Markdown({ content, className }) {
       {segments.map((segment, idx) => {
         if (segment.type === "code-block") {
           return (
-            <div key={idx} className="my-2 group relative">
-              <div className="absolute top-0 right-4 -translate-y-1/2 bg-[#1153ed] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                {segment.lang || "code"}
+            <div key={idx} className="my-4 group relative">
+              <div className="absolute top-0 left-6 -translate-y-1/2 bg-[#1153ed] text-white text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-[0.2em] shadow-lg shadow-blue-500/20 z-10 transition-transform group-hover:scale-110">
+                {segment.lang || "patch"}
               </div>
-              <pre className="bg-[#0f172a] text-[#e2e8f0] p-4 rounded-xl font-mono text-[13px] overflow-x-auto shadow-inner border border-slate-800">
-                <code>{segment.content.trim()}</code>
+              <pre className="bg-[#0f172a] text-[#e2e8f0] p-6 pt-8 rounded-[24px] font-mono text-[13px] overflow-x-auto shadow-2xl border border-slate-800/50 backdrop-blur-sm">
+                <code className="block leading-relaxed">{segment.content.trim()}</code>
               </pre>
             </div>
           );

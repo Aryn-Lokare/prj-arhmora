@@ -58,7 +58,7 @@ class PlaywrightCrawler:
                     continue
                 if not self._is_same_domain(clean_url):
                     continue
-                if self.prefilter.should_skip(clean_url):
+                if not self.prefilter.should_scan(clean_url):
                     continue
 
                 try:
@@ -80,7 +80,7 @@ class PlaywrightCrawler:
                     for href in hrefs:
                         candidate = self._strip_fragment(href)
                         if self._is_same_domain(candidate) and candidate not in visited_urls:
-                            if not self.prefilter.should_skip(candidate):
+                            if self.prefilter.should_scan(candidate):
                                 urls_to_visit.append(candidate)
 
                     # --- Extract forms ---

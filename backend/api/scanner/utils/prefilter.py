@@ -76,25 +76,21 @@ class PreFilter:
     def extract_parameters(url: str, forms: list = None) -> dict:
         """
         Extract injectable parameters from GET and POST vectors.
-        Returns: {"url": "...", "parameters": ["id", "q", ...]}
+        Returns: {"url": "...", "get_params": {"id": "1"}, "post_params": [{"action": "...", "inputs": [...]}]}
         """
         parsed = urlparse(url)
-        params = set()
+        get_params = {}
         
         # GET Params
-        for key in parse_qs(parsed.query).keys():
-            params.add(key)
+        for key, values in parse_qs(parsed.query).items():
+            get_params[key] = values[0] if values else "test"
 
         # POST Params (from forms)
-        if forms:
-            for form in forms:
-                if form.get("inputs"):
-                    for inp in form.get("inputs", []):
-                        if inp.get("name"):
-                            params.add(inp["name"])
+        post_params = forms if forms else []
 
         base_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
         return {
             "url": base_url,
-            "parameters": list(params)
+            "get_params": get_params,
+            "post_params": post_params
         }

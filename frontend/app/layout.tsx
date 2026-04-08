@@ -5,6 +5,7 @@ import { Inter, Space_Grotesk, JetBrains_Mono, Plus_Jakarta_Sans } from "next/fo
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { GoogleProvider } from "@/components/providers/google-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { AnimationProvider } from "@/components/providers/animation-provider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -47,7 +48,9 @@ export default function RootLayout({
               forcedTheme="light"
               disableTransitionOnChange
             >
-              {children}
+              <AnimationProvider>
+                {children}
+              </AnimationProvider>
             </ThemeProvider>
           </AuthProvider>
         </GoogleProvider>

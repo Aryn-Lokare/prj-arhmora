@@ -37,13 +37,26 @@ const showcaseItems = [
 
 const MockupCard = ({ image }) => {
     return (
-        <div className="w-full aspect-video bg-white rounded-2xl border border-gray-100 shadow-2xl overflow-hidden relative group">
+        <div className="w-full aspect-video bg-white rounded-2xl border border-gray-100 shadow-2xl overflow-hidden relative group cursor-pointer">
             <img 
                 src={image} 
                 alt="Product Screenshot" 
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            {/* Shimmer Effect */}
+            <motion.div 
+                initial={{ left: "-100%" }}
+                whileHover={{ left: "100%" }}
+                transition={{ duration: 1.5, ease: "easeInOut" }}
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-20deg] pointer-events-none"
+            />
+
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6">
+                <div className="text-white text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                    <Eye className="w-4 h-4" /> Preview Interface
+                </div>
+            </div>
         </div>
     );
 };
@@ -86,11 +99,14 @@ export function LandingShowcase() {
                                 transition={{ duration: 0.8 }}
                                 className="lg:w-1/2 space-y-8"
                             >
-                                <div className="h-12 w-12 rounded-xl bg-[#6C63FF]/10 flex items-center justify-center">
-                                    <Shield size={24} className="text-[#6C63FF]" />
-                                </div>
+                                <motion.div 
+                                    whileHover={{ rotate: 15, scale: 1.1 }}
+                                    className="h-14 w-14 rounded-2xl bg-[#6C63FF]/10 flex items-center justify-center border border-[#6C63FF]/20"
+                                >
+                                    <Shield size={28} className="text-[#6C63FF]" />
+                                </motion.div>
                                 <div className="space-y-4">
-                                    <h4 className="text-3xl md:text-4xl font-black text-[#131415] font-heading uppercase tracking-tight">
+                                    <h4 className="text-3xl md:text-4xl font-black text-[#131415] font-heading uppercase tracking-tight group-hover:text-[#6C63FF] transition-colors line-clamp-2">
                                         {item.title}
                                     </h4>
                                     <p className="text-gray-600 text-lg md:text-xl leading-relaxed font-body">
@@ -114,12 +130,20 @@ export function LandingShowcase() {
                                 transition={{ duration: 0.8 }}
                                 className="lg:w-1/2 w-full relative group"
                             >
-                                <div className="absolute -inset-10 bg-[#6C63FF]/10 blur-[120px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
                                 <motion.div 
-                                    whileHover={{ scale: 1.02, rotateY: item.side === "left" ? 2 : -2 }}
+                                    animate={{ 
+                                        scale: [1, 1.1, 1],
+                                        opacity: [0.1, 0.2, 0.1]
+                                    }}
+                                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                                    className="absolute -inset-20 bg-[#6C63FF]/20 blur-[120px] rounded-full" 
+                                />
+                                <motion.div 
+                                    whileHover={{ scale: 1.05, rotateY: item.side === "left" ? 5 : -5 }}
+                                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
                                     className="relative z-10 perspective-1000"
                                 >
-                                <MockupCard image={item.image} />
+                                    <MockupCard image={item.image} />
                                 </motion.div>
                             </motion.div>
                         </div>

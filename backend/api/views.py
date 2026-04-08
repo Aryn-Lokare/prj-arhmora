@@ -470,7 +470,7 @@ class GoogleAuthView(APIView):
             picture = idinfo.get('picture', '')
             email_verified = idinfo.get('email_verified', False)
 
-        except (ValueError, KeyError, TypeError):
+        except Exception:
             # 2. If ID token verification fails, attempt to treat as an Access Token
             # Fetch user info manually from Google
             import requests as py_requests
@@ -781,26 +781,17 @@ class ScanDashboardStatsView(APIView):
     def get(self, request):
         user = request.user
         
-        # 1. Get latest scan for each unique target (to avoid double counting)
-        # We need a robust way to get "current state".
-        # For simplicity MVP: just take all successful scans from the last 30 days?
-        # Better: Group by target_url and max(timestamp).
+        from django.db.models import Max
         
-        # Determine unique targets
-        unique_targets = ScanHistory.objects.filter(
-            user=user, 
-            status='Completed'
-        ).values_list('target_url', flat=True).distinct()
+        # Get latest scan ID for each unique target (single query, no N+1)
+        latest_scans_ids = list(
+            ScanHistory.objects.filter(user=user, status='Completed')
+            .values('target_url')
+            .annotate(latest_id=Max('id'))
+            .values_list('latest_id', flat=True)
+        )
         
-        latest_scans_ids = []
-        for url in unique_targets:
-            latest = ScanHistory.objects.filter(
-                user=user, 
-                target_url=url, 
-                status='Completed'
-            ).order_by('-timestamp').first()
-            if latest:
-                latest_scans_ids.append(latest.id)
+        unique_targets_count = len(latest_scans_ids)
                 
         # 2. Get all findings from these latest scans
         active_findings = ScanFinding.objects.filter(scan_id__in=latest_scans_ids)
@@ -840,7 +831,7 @@ class ScanDashboardStatsView(APIView):
                 },
                 'top_fixes': top_fixes,
                 'recent_scans': recent_scans,
-                'active_targets': len(unique_targets)
+                'active_targets': unique_targets_count
             }
         })
 
@@ -891,10 +882,12 @@ class DownloadReportView(APIView):
             if not os.path.exists(output_path):
                  return Response({"error": "Generated PDF file disappeared from storage."}, status=500)
 
-            file_handle = open(output_path, 'rb')
-            response = FileResponse(file_handle, content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="ARMORA_Report_{scan_id}.pdf"'
-            return response
+            return FileResponse(
+                open(output_path, 'rb'),
+                content_type='application/pdf',
+                as_attachment=True,
+                filename=f'ARMORA_Report_{scan_id}.pdf',
+            )
 
         except Exception as e:
             logger.exception(f"PDF download error for scan {scan_id}")

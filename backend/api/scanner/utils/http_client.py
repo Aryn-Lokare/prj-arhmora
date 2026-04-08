@@ -1,82 +1,80 @@
 import hashlib
 import time
 import logging
-import httpx
-import asyncio
+import requests
+import urllib3
 
 logger = logging.getLogger(__name__)
 
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 # Default timeout for all scanner HTTP requests (seconds).
 REQUEST_TIMEOUT = 10
-MAX_WORKERS = 10
 
 class HttpClient:
     """
-    Asynchronous HTTP client for the Armora scanner.
+    Synchronous HTTP client for the Armora scanner.
+    Uses requests.Session for connection pooling across threads.
     """
 
-    def __init__(self, timeout: int = REQUEST_TIMEOUT, verify_ssl: bool = False):
+    def __init__(self, timeout: int = REQUEST_TIMEOUT, verify_ssl: bool = False, session=None):
         self.timeout = timeout
         self.verify_ssl = verify_ssl
-        self.semaphore = asyncio.Semaphore(MAX_WORKERS)
-        self.client = httpx.AsyncClient(
-            timeout=self.timeout,
-            verify=verify_ssl,
-            follow_redirects=True,
-            limits=httpx.Limits(max_connections=50, max_keepalive_connections=20)
-        )
 
-    async def send_request(
+        # Share a session across threads for connection pooling
+        if session:
+            self.session = session
+        else:
+            self.session = requests.Session()
+            self.session.headers.update({"User-Agent": "Armora-Scanner/3.0"})
+            self.session.verify = verify_ssl
+
+    def send_request(
         self,
         url: str,
         method: str = "GET",
         params: dict = None,
         data: dict = None,
         headers: dict = None,
-        trace_id: str = None
     ) -> dict:
         """
-        Send an async HTTP request and return a normalised result dict.
+        Send a synchronous HTTP request and return a normalised result dict.
         """
-        _headers = {"User-Agent": "Armora-Scanner/3.0"}
-        if trace_id:
-            _headers["X-Armora-Trace-ID"] = trace_id
-        if headers:
-            _headers.update(headers)
+        try:
+            start = time.time()
+            resp = self.session.request(
+                method=method.upper(),
+                url=url,
+                params=params,
+                data=data,
+                headers=headers,
+                timeout=self.timeout,
+                verify=self.verify_ssl,
+                allow_redirects=True,
+            )
+            elapsed = time.time() - start
 
-        async with self.semaphore:
-            try:
-                start = time.time()
-                resp = await self.client.request(
-                    method=method.upper(),
-                    url=url,
-                    params=params,
-                    data=data,
-                    headers=_headers
-                )
-                elapsed = time.time() - start
+            body = resp.text
+            return {
+                "status_code": resp.status_code,
+                "body": body,
+                "body_hash": hashlib.sha256(body.encode("utf-8", errors="replace")).hexdigest(),
+                "response_time": round(elapsed, 4),
+                "headers": dict(resp.headers),
+            }
 
-                body = resp.text
-                return {
-                    "status_code": resp.status_code,
-                    "body": body,
-                    "body_hash": hashlib.sha256(body.encode("utf-8", errors="replace")).hexdigest(),
-                    "response_time": round(elapsed, 4),
-                    "headers": dict(resp.headers),
-                }
+        except requests.exceptions.Timeout:
+            logger.warning(f"Request timed out: {url}")
+            return self._empty_response(url, timed_out=True)
+        except Exception as exc:
+            logger.error(f"HTTP request failed for {url}: {exc}")
+            return self._empty_response(url)
 
-            except httpx.TimeoutException:
-                logger.warning(f"Request timed out: {url}")
-                return self._empty_response(url, timed_out=True)
-            except Exception as exc:
-                logger.error(f"Async HTTP request failed for {url}: {exc}")
-                return self._empty_response(url)
+    def get(self, url: str, params: dict = None, headers: dict = None) -> dict:
+        return self.send_request(url, method="GET", params=params, headers=headers)
 
-    async def get(self, url: str, params: dict = None, headers: dict = None) -> dict:
-        return await self.send_request(url, method="GET", params=params, headers=headers)
-
-    async def post(self, url: str, data: dict = None, headers: dict = None) -> dict:
-        return await self.send_request(url, method="POST", data=data, headers=headers)
+    def post(self, url: str, data: dict = None, headers: dict = None) -> dict:
+        return self.send_request(url, method="POST", data=data, headers=headers)
 
     @staticmethod
     def _empty_response(url: str, timed_out: bool = False) -> dict:
@@ -88,5 +86,3 @@ class HttpClient:
             "headers": {},
         }
 
-    async def close(self):
-        await self.client.aclose()

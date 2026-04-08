@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from decouple import config
 from datetime import timedelta
+import dj_database_url
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -13,12 +14,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-el3@4au@+dr=0ehz)#k%am-#@)^et%@qmk1!^p^)b+&ycgt9-9')
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+# Render sets RENDER_EXTERNAL_HOSTNAME automatically
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 
 # Application definition
@@ -50,6 +55,10 @@ MIDDLEWARE = [
 ]
 _cors_origins = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000,http://127.0.0.1:3000')
 CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(',') if o.strip()]
+
+# In debug mode, allow all origins to avoid CORS issues during local development
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
 
 CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='').split(',')
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in CSRF_TRUSTED_ORIGINS if o.strip()]
@@ -92,17 +101,13 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+# Supports DATABASE_URL (Render/Neon) with fallback to individual env vars
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME', default='arhmora_db'),
-        'USER': config('DB_USER', default='arhmora-testing'),
-        'PASSWORD': config('DB_PASSWORD', default='aryansl@1314'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='5432'),
-    }
+    'default': dj_database_url.config(
+        default=f"postgresql://{config('DB_USER', default='postgres')}:{config('DB_PASSWORD', default='')}@{config('DB_HOST', default='localhost')}:{config('DB_PORT', default='5432')}/{config('DB_NAME', default='arhmora_db')}",
+        conn_max_age=config('DB_CONN_MAX_AGE', default=600, cast=int),
+    )
 }
 
 
@@ -195,7 +200,31 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
-# OpenRouter Configuration
+# Free-tier mode: run Celery tasks synchronously (no separate worker/Redis needed)
+# Set CELERY_TASK_ALWAYS_EAGER=True in env to enable this
+CELERY_TASK_ALWAYS_EAGER = config('CELERY_TASK_ALWAYS_EAGER', default=False, cast=bool)
+CELERY_TASK_EAGER_PROPAGATES = CELERY_TASK_ALWAYS_EAGER
+
+# Celery Hardening (only relevant when not in eager mode)
+CELERY_TASK_SOFT_TIME_LIMIT = 300     # 5 min soft limit (raises SoftTimeLimitExceeded)
+CELERY_TASK_TIME_LIMIT = 360          # 6 min hard kill
+CELERY_TASK_ACKS_LATE = True          # Re-deliver if worker crashes
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1 # Fair scheduling for long tasks
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# Redis Connection Hardening
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'socket_timeout': 5,
+    'socket_connect_timeout': 5,
+}
+CELERY_REDIS_SOCKET_TIMEOUT = 5
+CELERY_REDIS_SOCKET_CONNECT_TIMEOUT = 5
+
+# OpenAI Configuration (Priority 1 — direct OpenAI)
+OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
+OPENAI_MODEL = config('OPENAI_MODEL', default='gpt-4o-mini')
+
+# OpenRouter Configuration (Priority 2 — fallback)
 OPENROUTER_API_KEY = config('OPENROUTER_API_KEY', default='')
 OPENROUTER_MODEL = config('OPENROUTER_MODEL', default='google/gemini-2.0-flash-001')
 

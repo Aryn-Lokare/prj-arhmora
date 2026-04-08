@@ -14,7 +14,7 @@ ARMORA is a state-of-the-art web security platform that combines traditional vul
 
 ### Backend
 
-- **Framework**: Django 6.0 + Django REST Framework
+- **Framework**: Django 4.2 + Django REST Framework
 - **Database**: PostgreSQL (Relational persistence)
 - **Task Queue**: Celery (Background scanning)
 - **Broker/Cache**: Redis

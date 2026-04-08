@@ -55,7 +55,7 @@ class SmartDetectionEngine:
         # ... logic stays same if called directly ...
         scannable_urls = [
             url for url in urls
-            if not self.prefilter.should_skip(url)
+            if self.prefilter.should_scan(url)
         ]
 
         logger.info(
@@ -97,7 +97,7 @@ class SmartDetectionEngine:
         
         scannable_urls = [
             url for url in urls
-            if not self.prefilter.should_skip(url)
+            if self.prefilter.should_scan(url)
         ]
 
         for url in scannable_urls:
